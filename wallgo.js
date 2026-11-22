@@ -154,6 +154,7 @@ export function forceFinish(m) {
 
 // ---------------- 판 화면 ----------------
 const S = 60, M = 22, NS = "http://www.w3.org/2000/svg";
+let wgSeq = 0;
 export class WallBoard {
   constructor(svg, { onPlace, onMove } = {}) {
     this.svg = svg; this.onPlace = onPlace; this.onMove = onMove;
@@ -168,14 +169,27 @@ export class WallBoard {
   }
   xy(cell) { return [M + (cell % N) * S, M + Math.floor(cell / N) * S]; }
   draw() {
-    const m = this.m, svg = this.svg;
-    svg.innerHTML = "";
-    const add = (tag, attrs) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); svg.appendChild(el); return el; };
-    add("rect", { x: M - 10, y: M - 10, width: N * S + 20, height: N * S + 20, rx: 18, class: "wg-bg" });
+    const m = this.m, svg = this.svg, P = this.uid || (this.uid = "wg" + (++wgSeq) + "-");
+    const u = (id) => `url(#${P}${id})`;
+    const grad = (id, dir, c) => `<linearGradient id="${P}${id}" x1="0" y1="0" x2="${dir === "v" ? 1 : 0}" y2="${dir === "v" ? 0 : 1}">${c.map((x, i) => `<stop offset="${i / (c.length - 1)}" stop-color="${x}"/>`).join("")}</linearGradient>`;
+    const WA = ["#ffb3c9", "#ef6b97", "#b93564"], WB = ["#a9c6ff", "#4f7fe0", "#2a4fa8"];
+    svg.innerHTML = `<defs>
+      <linearGradient id="${P}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f7ff"/><stop offset="1" stop-color="#e3eafb"/></linearGradient>
+      <linearGradient id="${P}tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#edf1fb"/></linearGradient>
+      ${grad("wah", "h", WA)}${grad("wav", "v", WA)}${grad("wbh", "h", WB)}${grad("wbv", "v", WB)}
+      <radialGradient id="${P}sa" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffe1ea"/><stop offset=".45" stop-color="#ff7aa2"/><stop offset="1" stop-color="#c23a6b"/></radialGradient>
+      <radialGradient id="${P}sb" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#dfe9ff"/><stop offset=".45" stop-color="#5b8def"/><stop offset="1" stop-color="#2c55b5"/></radialGradient>
+      <filter id="${P}sh" x="-40%" y="-40%" width="180%" height="190%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#29304d" flood-opacity=".3"/></filter>
+      <filter id="${P}tsh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#8a98c4" flood-opacity=".35"/></filter>
+      <filter id="${P}bsh" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#5b8def" flood-opacity=".2"/></filter>
+    </defs>`;
+    const add = (tag, attrs, parent = svg) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); parent.appendChild(el); return el; };
+    add("rect", { x: M - 12, y: M - 12, width: N * S + 24, height: N * S + 24, rx: 22, fill: u("bg"), filter: u("bsh"), class: "wg-bg" });
     const ev = this.showRegions ? evaluate(m) : null;
     const reach = this.active && this.sel !== null && m.phase === "play" ? new Set(reachable(m, this.sel)) : new Set();
     const canPlace = this.active && m.phase === "place";
     const occ = occupied(m.stones);
+    const tiles = add("g", { filter: u("tsh") });
     for (let c = 0; c < N * N; c++) {
       const [x, y] = this.xy(c);
       let cls = "wg-cell";
@@ -184,13 +198,26 @@ export class WallBoard {
       if (canPlace && !occ.has(c)) cls += " placeable";
       if (this.dest === c) cls += " dest";
       if (m.last && (m.last.to === c || m.last.place === c)) cls += " last";
-      add("rect", { x: x + 2, y: y + 2, width: S - 4, height: S - 4, rx: 10, class: cls, "data-cell": c });
+      add("rect", { x: x + 3, y: y + 3, width: S - 6, height: S - 6, rx: 11, fill: u("tile"), class: cls, "data-cell": c }, tiles);
     }
-    // 세운 벽
+    // 도착 칸 표시
+    if (this.active && this.dest !== null) {
+      const [x, y] = this.xy(this.dest);
+      add("circle", { cx: x + S / 2, cy: y + S / 2, r: 25, class: "wg-dest-ring" });
+    }
+    // 세운 벽 (벽돌 무늬)
+    const walls = add("g", { filter: u("sh") });
     for (let w = 0; w < WALLS; w++) {
       if (m.walls[w] === "0") continue;
-      const [x1, y1, x2, y2] = this.wallLine(w);
-      add("line", { x1, y1, x2, y2, class: `wg-wall side-${m.walls[w]}${m.last && m.last.wall === w ? " new" : ""}` });
+      const side = m.walls[w], [c1, c2] = wallCells(w), [x, y] = this.xy(c1), T = 12, horiz = c2 - c1 === N;
+      const g = add("g", { class: `wg-wall side-${side}${m.last && m.last.wall === w ? " new" : ""}` }, walls);
+      if (horiz) {
+        add("rect", { x: x + 2, y: y + S - T / 2, width: S - 4, height: T, rx: 4, fill: u(`w${side}h`), class: "wg-brick" }, g);
+        [S / 3, (2 * S) / 3].forEach((dx) => add("line", { x1: x + dx, y1: y + S - T / 2 + 2, x2: x + dx, y2: y + S + T / 2 - 2, class: "wg-mortar" }, g));
+      } else {
+        add("rect", { x: x + S - T / 2, y: y + 2, width: T, height: S - 4, rx: 4, fill: u(`w${side}v`), class: "wg-brick" }, g);
+        [S / 3, (2 * S) / 3].forEach((dy) => add("line", { x1: x + S - T / 2 + 2, y1: y + dy, x2: x + S + T / 2 - 2, y2: y + dy, class: "wg-mortar" }, g));
+      }
     }
     // 벽 후보
     if (this.active && this.dest !== null) {
@@ -200,14 +227,19 @@ export class WallBoard {
         add("line", { x1, y1, x2, y2, class: "wg-cand-hit", "data-wall": w });
       }
     }
-    // 말
+    // 말 (반짝이는 구슬)
+    const stones = add("g", { filter: u("sh") });
     for (const s of ["a", "b"]) m.stones[s].forEach((c) => {
       if (c < 0) return;
       const shown = this.dest !== null && c === this.sel ? this.dest : c;
-      const [x, y] = this.xy(shown);
-      const g = add("circle", { cx: x + S / 2, cy: y + S / 2, r: 19, class: `wg-stone side-${s}${s === this.me ? " mine" : ""}${c === this.sel ? " sel" : ""}`, "data-stone": c });
+      if (shown !== c) { const [gx, gy] = this.xy(c); add("circle", { cx: gx + S / 2, cy: gy + S / 2, r: 15, class: `wg-ghost side-${s}` }); }
+      const [x, y] = this.xy(shown), cx = x + S / 2, cy = y + S / 2;
+      const g = add("g", { class: `wg-stone side-${s}${s === this.me ? " mine" : ""}${c === this.sel ? " sel" : ""}`, "data-stone": c }, stones);
       g.style.pointerEvents = "none";
-      if (shown !== c) add("circle", { cx: this.xy(c)[0] + S / 2, cy: this.xy(c)[1] + S / 2, r: 12, class: `wg-ghost side-${s}` });
+      if (c === this.sel) add("circle", { cx, cy, r: 24.5, class: "wg-sel-ring" }, g);
+      add("circle", { cx, cy, r: 19, fill: u("s" + s), class: "wg-ball" }, g);
+      add("ellipse", { cx: cx - 6, cy: cy - 7.5, rx: 7, ry: 4.5, class: "wg-shine", transform: `rotate(-25 ${cx - 6} ${cy - 7.5})` }, g);
+      if (s === this.me) add("circle", { cx: cx + 10.5, cy: cy + 10.5, r: 4.2, class: "wg-me-dot" }, g);
     });
   }
   wallLine(w) {

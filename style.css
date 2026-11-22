@@ -154,19 +154,17 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .board { width: 100%; max-width: min(640px, 92vw); max-height: 62vh; touch-action: none; user-select: none; -webkit-user-select: none; }
 .board.small { max-height: 300px; max-width: 320px; display: block; margin: 0 auto; }
 .board.pr { max-height: 46vh; }
-.bd-bg { fill: #fff; stroke: #d6e1fa; stroke-width: 4; transition: stroke .2s, fill .2s; }
-.erase-mode .bd-bg { stroke: #ffb3bb; stroke-width: 7; fill: #fff8f9; }
-.bd-cell { fill: #f6f9ff; }
-.bd-in { fill: #d8f6e6; }
+.bd-bg { stroke: #e8dcbc; stroke-width: 3; transition: stroke .2s; }
+.erase-mode .bd-bg { stroke: #ff9aa6; stroke-width: 7; }
+.bd-cell { stroke: #eee6d0; stroke-width: 1.2; }
 .bd-sheep { animation: bob 2.4s ease-in-out infinite; transform-box: fill-box; }
-.bd-slot { stroke: #d9e2f5; stroke-width: 3; stroke-dasharray: 1 8; stroke-linecap: round; }
-.bd-edge { stroke: #e0802c; stroke-width: 13; stroke-linecap: round; }
-.bd-edge-in { stroke: #ffb46b; stroke-width: 5; stroke-linecap: round; }
-.bd-edge.answer { stroke: var(--mint-d); }
-.bd-edge-in.answer { stroke: #8fe3bf; }
-.bd-dot { fill: #5a6488; }
-.bd-dot-hi { fill: #fff; opacity: .7; }
-.bd-clue { font-family: "Jua", sans-serif; font-size: 36px; text-anchor: middle; dominant-baseline: central; transition: opacity .2s; }
+.bd-slot { stroke: #d8cfb8; stroke-width: 3; stroke-dasharray: 1 8; stroke-linecap: round; }
+.bd-edge { stroke: #7a4a20; stroke-width: 1.2; stroke-opacity: .55; }
+.bd-rails.answer .bd-edge { stroke: #17704c; }
+.bd-grain { stroke: #ffe6bf; stroke-width: 2; stroke-linecap: round; opacity: .6; }
+.bd-rails.answer .bd-grain { stroke: #d9ffe9; }
+.bd-dot-hi { fill: #fff; opacity: .55; }
+.bd-clue { font-family: "Jua", sans-serif; font-size: 36px; text-anchor: middle; dominant-baseline: central; transition: opacity .2s; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }
 .bd-clue.n0 { fill: #5b8def; }
 .bd-clue.n1 { fill: #22b07d; }
 .bd-clue.n2 { fill: #f08a24; }
@@ -175,7 +173,7 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .bd-clue.over { fill: var(--red); opacity: 1; }
 .bd-clue.bad { fill: var(--red); opacity: 1; animation: blink .5s 4; }
 @keyframes blink { 50% { opacity: .15; } }
-.locked .bd-edge, .locked .bd-edge-in { opacity: .8; }
+.locked .bd-rails { opacity: .85; }
 .tools { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .tool { font-size: 1.1rem; padding: 13px 18px; border: 3px solid transparent; background: #fff; box-shadow: 0 4px 0 #dbe3f5; }
 .tool.active { border-color: var(--blue); color: var(--blue); background: #eef4ff; }
@@ -315,26 +313,29 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .wg-status.ok { color: var(--mint-d); }
 .wg-status.bad { color: var(--red); }
 .board.wg { max-width: min(560px, 94vw); max-height: 66vh; }
-.wg-bg { fill: #fff; stroke: #d6e1fa; stroke-width: 4; }
-.wg-cell { fill: #f3f6fd; cursor: pointer; transition: fill .15s; }
-.wg-cell.placeable { fill: #eaf7f0; }
-.wg-cell.reach { fill: #c9f1dc; }
-.wg-cell.dest { fill: #8fe3bf; }
-.wg-cell.last { stroke: #ffd166; stroke-width: 3; }
-.wg-cell.own-a { fill: #ffd8e4; }
-.wg-cell.own-b { fill: #d6e3ff; }
-.wg-wall { stroke-width: 9; stroke-linecap: round; }
-.wg-wall.side-a { stroke: var(--pink-d); }
-.wg-wall.side-b { stroke: var(--blue-d); }
+.wg-bg { stroke: #d3ddf6; stroke-width: 3; }
+.wg-cell { stroke: #dde4f4; stroke-width: 1.2; cursor: pointer; transition: fill .15s; }
+.wg-cell.placeable { fill: #eefaf3; stroke: #b5e8cf; }
+.wg-cell.reach { fill: #cff4e1; stroke: #8fe3bf; stroke-width: 2; }
+.wg-cell.dest { fill: #9ee8c6; stroke: var(--mint-d); stroke-width: 2.5; }
+.wg-cell.last { stroke: #ffc94d; stroke-width: 3.5; }
+.wg-cell.own-a { fill: #ffd6e3; stroke: #ffb3c9; }
+.wg-cell.own-b { fill: #d5e2ff; stroke: #a9c6ff; }
+.wg-dest-ring { fill: none; stroke: var(--mint); stroke-width: 3; stroke-dasharray: 5 5; pointer-events: none; animation: spin 6s linear infinite; transform-box: fill-box; transform-origin: center; }
+.wg-brick { stroke-width: 1.2; }
+.wg-wall.side-a .wg-brick { stroke: #9e2752; }
+.wg-wall.side-b .wg-brick { stroke: #22448f; }
+.wg-mortar { stroke: #fff; stroke-width: 1.6; opacity: .55; stroke-linecap: round; }
 .wg-wall.new { animation: blink .5s 3; }
-.wg-cand { stroke: var(--orange); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 3 9; animation: pulse 1s infinite; transform-box: fill-box; transform-origin: center; }
+.wg-cand { stroke: var(--orange); stroke-width: 9; stroke-linecap: round; stroke-dasharray: 4 8; animation: pulse 1s infinite; transform-box: fill-box; transform-origin: center; pointer-events: none; }
 .wg-cand-hit { stroke: transparent; stroke-width: 30; cursor: pointer; stroke-linecap: round; }
-.wg-stone { stroke: #fff; stroke-width: 3; }
-.wg-stone.side-a { fill: var(--pink); }
-.wg-stone.side-b { fill: var(--blue); }
-.wg-stone.mine { stroke: #3b3f58; stroke-width: 3.5; }
-.wg-stone.sel { stroke: var(--sun-d); stroke-width: 6; }
-.wg-ghost { fill: none; stroke-width: 3; stroke-dasharray: 4 4; }
+.wg-ball { stroke: #fff; stroke-width: 2.5; }
+.wg-shine { fill: #fff; opacity: .6; }
+.wg-me-dot { fill: #fff; stroke: #3b3f58; stroke-width: 2; }
+.wg-stone.side-a .wg-me-dot { fill: #ffe1ea; }
+.wg-stone.side-b .wg-me-dot { fill: #dfe9ff; }
+.wg-sel-ring { fill: none; stroke: var(--sun-d); stroke-width: 4; animation: pulse 1s infinite; transform-box: fill-box; transform-origin: center; }
+.wg-ghost { fill: none; stroke-width: 3; stroke-dasharray: 4 4; pointer-events: none; }
 .wg-ghost.side-a { stroke: var(--pink); }
 .wg-ghost.side-b { stroke: var(--blue); }
 .rank-tabs { display: flex; gap: 6px; }

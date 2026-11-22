@@ -2,6 +2,7 @@
 const S = 60;   // 칸 크기
 const M = 34;   // 바깥 여백
 const NS = "http://www.w3.org/2000/svg";
+let uidSeq = 0;
 
 export function edgeCount(w, h) { return (h + 1) * w + h * (w + 1); }
 
@@ -144,44 +145,62 @@ export class Board {
   draw() {
     const { w, h, g } = this;
     if (!g) return;
-    const svg = this.svg;
-    svg.innerHTML = "";
+    const svg = this.svg, P = this.uid || (this.uid = "fb" + (++uidSeq) + "-");
+    const u = (id) => `url(#${P}${id})`;
+    // 나무 울타리·풀밭 무늬
+    svg.innerHTML = `<defs>
+      <linearGradient id="${P}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf5"/><stop offset="1" stop-color="#f1f7e9"/></linearGradient>
+      <linearGradient id="${P}wh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3c27f"/><stop offset=".45" stop-color="#d08d47"/><stop offset="1" stop-color="#94592a"/></linearGradient>
+      <linearGradient id="${P}wv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f3c27f"/><stop offset=".45" stop-color="#d08d47"/><stop offset="1" stop-color="#94592a"/></linearGradient>
+      <linearGradient id="${P}gh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ce8bd"/><stop offset=".5" stop-color="#34c38f"/><stop offset="1" stop-color="#1f8f63"/></linearGradient>
+      <linearGradient id="${P}gv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9ce8bd"/><stop offset=".5" stop-color="#34c38f"/><stop offset="1" stop-color="#1f8f63"/></linearGradient>
+      <radialGradient id="${P}post" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#c58d5a"/><stop offset=".55" stop-color="#8a5a31"/><stop offset="1" stop-color="#5a3518"/></radialGradient>
+      <radialGradient id="${P}cell" cx=".5" cy=".35" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f6f3e8"/></radialGradient>
+      <pattern id="${P}grass" width="16" height="16" patternUnits="userSpaceOnUse">
+        <rect width="16" height="16" fill="#c9f0d4"/>
+        <path d="M3 13l1.6-4.5 1.6 4.5M10 7l1.3-3.5 1.3 3.5" stroke="#86d19f" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <circle cx="13" cy="13" r="1.1" fill="#fff4a8"/>
+      </pattern>
+      <filter id="${P}sh" x="-30%" y="-60%" width="160%" height="220%"><feDropShadow dx="0" dy="2.2" stdDeviation="1.6" flood-color="#5a3518" flood-opacity=".35"/></filter>
+      <filter id="${P}bsh" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#8a6a3a" flood-opacity=".18"/></filter>
+      <filter id="${P}tsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#3b3f58" flood-opacity=".18"/></filter>
+    </defs>`;
     const add = (tag, attrs, parent = svg) => {
       const el = document.createElementNS(NS, tag);
       for (const k in attrs) el.setAttribute(k, attrs[k]);
       parent.appendChild(el);
       return el;
     };
-    add("rect", { x: M - 20, y: M - 20, width: w * S + 40, height: h * S + 40, rx: 22, class: "bd-bg" });
+    add("rect", { x: M - 22, y: M - 22, width: w * S + 44, height: h * S + 44, rx: 24, fill: u("bg"), filter: u("bsh"), class: "bd-bg" });
     const total = edgeCount(w, h);
     const show = this.answer || this.edges;
-    // 모눈 칸
+    // 칸 (모눈 타일)
     for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
       const [x, y] = this.pos(r, c);
-      add("rect", { x: x + 3, y: y + 3, width: S - 6, height: S - 6, rx: 9, class: "bd-cell" });
+      add("rect", { x: x + 4, y: y + 4, width: S - 8, height: S - 8, rx: 10, fill: u("cell"), class: "bd-cell" });
     }
     // 울타리 안쪽 풀밭 + 양
     if (this.fill) {
       const cells = insideCells(w, h, show);
       cells.forEach(([r, c]) => {
         const [x, y] = this.pos(r, c);
-        add("rect", { x: x + 1, y: y + 1, width: S - 2, height: S - 2, rx: 6, class: "bd-in" });
+        add("rect", { x: x, y: y, width: S, height: S, fill: u("grass"), class: "bd-in" });
       });
       const free = cells.filter(([r, c]) => this.clues[r * w + c] === ".");
-      const spot = (free.length ? free : cells)[0];
-      if (spot && free.length) {
-        const [x, y] = this.pos(spot[0], spot[1]);
-        const u = add("use", { href: "#sheep", x: x + 6, y: y + 8, width: S - 12, height: S - 14, class: "bd-sheep" });
-        u.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#sheep");
+      if (free.length) {
+        const [x, y] = this.pos(free[0][0], free[0][1]);
+        const us = add("use", { href: "#sheep", x: x + 5, y: y + 4, width: S - 10, height: S - 8, class: "bd-sheep" });
+        us.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#sheep");
       }
     }
     // 빈 자리(연한 점선)
     for (let e = 0; e < total; e++) {
+      if (show.has(e)) continue;
       const [[r1, c1], [r2, c2]] = g.ends(e);
       const [x1, y1] = this.pos(r1, c1), [x2, y2] = this.pos(r2, c2);
       add("line", { x1, y1, x2, y2, class: "bd-slot" });
     }
-    // 숫자
+    // 숫자 (흰 테두리로 또렷하게)
     for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
       const ch = this.clues[r * w + c];
       if (ch === ".") continue;
@@ -193,22 +212,30 @@ export class Board {
       }
       if (this.bad.includes(r * w + c)) cls += " bad";
       const [x, y] = this.pos(r + 0.5, c + 0.5);
-      const t = add("text", { x, y, class: cls });
+      const t = add("text", { x, y, class: cls, filter: u("tsh") });
       t.textContent = ch;
     }
-    // 울타리 (두 겹으로 그려 사탕 울타리처럼)
-    const cls = this.answer ? " answer" : "";
+    // 나무 울타리 판자 (정답은 초록 울타리)
+    const ans = !!this.answer;
+    const rails = add("g", { filter: u("sh"), class: "bd-rails" + (ans ? " answer" : "") });
+    const T = 13;
     for (const e of show) {
       const [[r1, c1], [r2, c2]] = g.ends(e);
       const [x1, y1] = this.pos(r1, c1), [x2, y2] = this.pos(r2, c2);
-      add("line", { x1, y1, x2, y2, class: "bd-edge" + cls });
-      add("line", { x1, y1, x2, y2, class: "bd-edge-in" + cls });
+      if (y1 === y2) {
+        add("rect", { x: x1 - 2, y: y1 - T / 2, width: x2 - x1 + 4, height: T, rx: T / 2, fill: u(ans ? "gh" : "wh"), class: "bd-edge" }, rails);
+        add("line", { x1: x1 + 12, y1: y1 - 2, x2: x2 - 12, y2: y1 - 2, class: "bd-grain" }, rails);
+      } else {
+        add("rect", { x: x1 - T / 2, y: y1 - 2, width: T, height: y2 - y1 + 4, rx: T / 2, fill: u(ans ? "gv" : "wv"), class: "bd-edge" }, rails);
+        add("line", { x1: x1 - 2, y1: y1 + 12, x2: x1 - 2, y2: y2 - 12, class: "bd-grain" }, rails);
+      }
     }
-    // 점
+    // 울타리 기둥(점)
+    const posts = add("g", { filter: u("sh") });
     for (let r = 0; r <= h; r++) for (let c = 0; c <= w; c++) {
       const [x, y] = this.pos(r, c);
-      add("circle", { cx: x, cy: y, r: 7.5, class: "bd-dot" });
-      add("circle", { cx: x - 2.2, cy: y - 2.2, r: 2.2, class: "bd-dot-hi" });
+      add("circle", { cx: x, cy: y, r: 9, fill: u("post"), class: "bd-dot" }, posts);
+      add("circle", { cx: x - 2.8, cy: y - 3, r: 2.6, class: "bd-dot-hi" }, posts);
     }
   }
 

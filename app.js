@@ -10,7 +10,7 @@ import { PUZZLES } from "./puzzles.js";
 import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js";
 import * as WG from "./wallgo.js";
 
-const VERSION = "v1.0";
+const VERSION = "v1.1";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
