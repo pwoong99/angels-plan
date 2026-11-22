@@ -1,0 +1,82 @@
+rules_version = '2';
+// 엔젤스 플랜 (angels-plan 프로젝트) 보안 규칙
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    // 선생님: 비밀번호를 아는 기기만 teachers에 자기 문서를 만들 수 있어요 (비밀번호는 해시로만 비교)
+    function isTeacher() {
+      return signedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+
+    match /teachers/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['k', 'at'])
+        && request.resource.data.k is string
+        && hashing.sha256(request.resource.data.k).toHexString().lower() == 'f27f4df9c0ac06cc9008fa8dade0bedbff942573d413bb5c73b86f7ef24bac8a';
+    }
+
+    // 게임방: 접속한 누구나 보기, 선생님만 만들기·바꾸기
+    match /rooms/{code} {
+      allow read: if signedIn();
+      allow write: if isTeacher();
+
+      function room() {
+        return get(/databases/$(database)/documents/rooms/$(code)).data;
+      }
+      function playerUid(name) {
+        return get(/databases/$(database)/documents/rooms/$(code)/players/$(name)).data.uid;
+      }
+
+      // 학생: 이름으로 입장(같은 이름이면 이어하기), 울타리치기 선 저장, 라운드마다 한 번만 제출
+      // 점수·결과·팀·대결 배정은 선생님 화면만 쓸 수 있어요
+      match /players/{pid} {
+        allow read: if signedIn();
+        allow delete: if isTeacher();
+        allow create: if isTeacher() || (
+          signedIn()
+          && exists(/databases/$(database)/documents/rooms/$(code))
+          && pid.size() >= 1 && pid.size() <= 10
+          && request.resource.data.keys().hasOnly(['name', 'uid', 'score', 'edges', 'joinedAt', 'lastSeen'])
+          && request.resource.data.name == pid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.score == 0
+          && request.resource.data.edges is string
+        );
+        allow update: if isTeacher() || (
+          signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'edges', 'sub', 'lastSeen'])
+          && request.resource.data.edges is string
+          && request.resource.data.edges.size() <= 200
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sub'])
+            || (
+              request.resource.data.sub.keys().hasOnly(['round', 'edges', 'at'])
+              && request.resource.data.sub.at == request.time
+              && request.resource.data.sub.edges is string
+              && request.resource.data.sub.edges.size() <= 200
+              && room().status == 'playing'
+              && request.resource.data.sub.round == room().round
+              && (!('sub' in resource.data) || resource.data.sub.round != request.resource.data.sub.round)
+            )
+          )
+        );
+      }
+
+      // 벽바둑 대결: 선생님이 만들고, 대결하는 두 학생만 수를 둘 수 있어요
+      match /matches/{mid} {
+        allow read: if signedIn();
+        allow create, delete: if isTeacher();
+        allow update: if isTeacher() || (
+          signedIn()
+          && (playerUid(resource.data.a) == request.auth.uid || playerUid(resource.data.b) == request.auth.uid)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['stones', 'walls', 'turn', 'phase', 'placeNo', 'moveNo', 'deadline', 'last', 'scoreA', 'scoreB', 'winner', 'endedAt'])
+          && resource.data.phase != 'done'
+        );
+      }
+    }
+  }
+}
