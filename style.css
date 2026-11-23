@@ -543,3 +543,13 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .bubble.ok { color: var(--mint-d); }
 .bubble.bad { color: var(--red); }
 .porong.mini { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; }
+
+/* 제한 시간 없음 */
+.free-btn.on { background: #eaf7ff; border-color: var(--blue); color: var(--blue); }
+.timer.free { font-size: 1.35rem; color: var(--muted); }
+.free-note { background: #f3f9ff; border: 2px dashed #bcd8ff; border-radius: 14px; padding: 8px 12px; }
+#cubePanel .time-row { flex-wrap: wrap; }
+#ctimeLabel { white-space: nowrap; }
+#ctimeLabel.free { font-size: 1.3rem; }
+#ctimeFree { flex-basis: 100%; margin-top: 4px; }
+#tTimer.free, .timer.free { white-space: nowrap; font-size: 1.3rem; }

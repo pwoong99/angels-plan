@@ -6,13 +6,13 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v2.1";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.1";
-import * as WG from "./wallgo.js?v=v2.1";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.1";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.1";
+import { PUZZLES } from "./puzzles.js?v=v2.2";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.2";
+import * as WG from "./wallgo.js?v=v2.2";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.2";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.2";
 
-const VERSION = "v2.1";
+const VERSION = "v2.2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -618,7 +618,9 @@ $("stLeave").addEventListener("click", async () => {
   if (await confirmBox("게임방에서 나갈까요?\n같은 이름으로 다시 들어오면 점수가 이어져요.", "나가기")) leaveStudent("");
 });
 
-function endAtOf(r) { const s = ms(r && r.startAt); return s ? s + r.duration * 1000 : null; }
+// 끝나는 시각. 제한 시간 없음(duration 0)이면 null → 시간 초과·늦은 제출 없이, 모두 끝내거나 선생님이 끝낼 때까지 진행
+function endAtOf(r) { const s = ms(r && r.startAt); return s && r.duration > 0 ? s + r.duration * 1000 : null; }
+const elapsedOf = (r) => { const s = ms(r && r.startAt); return s ? (now() - s) / 1000 : 0; };
 
 let celebrated = null;
 function porongFace(name) { const el = $("stMascot"); if (el) el.src = `img/porong-${name}.jpg`; }
@@ -943,9 +945,13 @@ function studentTick() {
     return;
   }
   const end = endAtOf(r);
-  if (end === null) return;
+  if (end === null) {   // 제한 시간 없음: 지난 시간만 보여 줌
+    for (const el of [$("stTimer"), $("cbTimer")]) { el.textContent = "⏱ " + fmtTime(elapsedOf(r)); el.classList.remove("warn"); el.classList.add("free"); }
+    return;
+  }
   const left = (end - now()) / 1000;
   for (const el of [$("stTimer"), $("cbTimer")]) {
+    el.classList.remove("free");
     el.textContent = fmtTime(left);
     el.classList.toggle("warn", left <= 10 && left > 0);
   }
@@ -1289,7 +1295,7 @@ async function startTeacher(code) {
 const pRefOf = (id) => doc(db, "rooms", T.code, "players", id);
 const mRefOf = (id) => doc(db, "rooms", T.code, "matches", id);
 const times = () => { const t = T.room && T.room.times; return Array.isArray(t) && t.length === PUZZLES.length ? t : DEFAULT_TIMES; };
-const ctimes = () => { const t = T.room && T.room.ctimes; return Array.isArray(t) && t.length === CUBES.length ? t : DEFAULT_CTIMES; };
+const ctimes = () => { const t = T.room && T.room.ctimes; return Array.isArray(t) && t.length === CUBES.length ? t : DEFAULT_CTIMES; };   // 0 = 제한 시간 없음
 const pts = () => {
   const p = (T.room && T.room.pts) || {};
   return { base: Number.isFinite(p.base) ? p.base : DEFAULT_PTS.base, top: Number.isFinite(p.top) ? p.top : DEFAULT_PTS.top, mult: typeof p.mult === "boolean" ? p.mult : DEFAULT_PTS.mult };
@@ -1346,10 +1352,16 @@ function renderTeacher() {
   $("cubeLevelBtns").innerHTML = CUBES.map((L, i) => {
     const lv = i + 1;
     return `<button class="level-btn ${L.tut ? "tut" : ""} ${lv === T.csel ? "active" : ""}" data-clv="${lv}" ${playing ? "disabled" : ""}>
-      <b>${L.tut ? "🐣 " : ""}${L.name}</b>${L.w}×${L.h} · ${L.max}층<br><small>${CUBE_Q}문제 · ${fmtTime(ctimes()[i])}${pts().mult ? ` · ×${LEVEL_MULT[i]}` : ""}</small></button>`;
+      <b>${L.tut ? "🐣 " : ""}${L.name}</b>${L.w}×${L.h} · ${L.max}층<br><small>${CUBE_Q}문제 · ${ctimes()[i] > 0 ? fmtTime(ctimes()[i]) : "시간 제한 없음"}${pts().mult ? ` · ×${LEVEL_MULT[i]}` : ""}</small></button>`;
   }).join("");
-  $("ctimeLabel").textContent = fmtTime(ctimes()[T.csel - 1]);
-  ["ctimeMinus", "ctimePlus"].forEach((id) => ($(id).disabled = playing));
+  const ct = ctimes()[T.csel - 1];
+  $("ctimeLabel").textContent = ct > 0 ? fmtTime(ct) : "제한 없음";
+  $("ctimeLabel").classList.toggle("free", !(ct > 0));
+  $("ctimeFree").textContent = ct > 0 ? "♾️ 제한 없음" : "⏱ 시간 정하기";
+  $("ctimeFree").classList.toggle("on", !(ct > 0));
+  $("ctimeNote").classList.toggle("hidden", ct > 0);
+  ["ctimeMinus", "ctimePlus", "ctimeFree"].forEach((id) => ($(id).disabled = playing));
+  $("ctimeMinus").disabled = playing || !(ct > 0);
 
   // 울타리치기 단계
   $("levelBtns").innerHTML = PUZZLES.map((L, i) => {
@@ -1388,7 +1400,7 @@ function renderTeacher() {
   $("tBoard").style.display = showPuzzle ? "" : "none";
   $("tCubes").classList.toggle("hidden", !showCube);
   if (showCube) {
-    $("tRoundInfo").textContent = `${r.round}라운드 · 큐브 세기 · ${cubeLabel(r.cube.lv)}${r.status === "ended" ? " · 끝" : ""}`;
+    $("tRoundInfo").textContent = `${r.round}라운드 · 큐브 세기 · ${cubeLabel(r.cube.lv)}${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
     const L = CUBES[r.cube.lv - 1], k = r.round + ":" + T.answer;
     if ($("tCubes").dataset.k !== k) {
       $("tCubes").dataset.k = k;
@@ -1509,8 +1521,16 @@ function teacherTick() {
     return;
   }
   const end = endAtOf(r);
-  if (end === null) return;
+  const allDone = T.players.length && T.players.every((p) => playerState(p, r).done);
+  if (end === null) {   // 제한 시간 없음: 지난 시간 표시, 모두 끝내면 자동 종료(아니면 선생님이 [라운드 끝내기])
+    if (!ms(r.startAt)) return;
+    $("tTimer").textContent = "⏱ " + fmtTime(elapsedOf(r));
+    $("tTimer").classList.remove("warn"); $("tTimer").classList.add("free");
+    if (allDone) endRound();
+    return;
+  }
   const left = (end - now()) / 1000;
+  $("tTimer").classList.remove("free");
   $("tTimer").textContent = fmtTime(left);
   $("tTimer").classList.toggle("warn", left <= 10 && left > 0);
   if (now() > end + GRACE_MS + 800) return endRound();
@@ -1736,11 +1756,14 @@ $("cubeLevelBtns").addEventListener("click", (e) => {
 });
 function changeCTime(d) {
   const arr = [...ctimes()];
-  arr[T.csel - 1] = Math.min(900, Math.max(20, arr[T.csel - 1] + d));
+  const cur = arr[T.csel - 1];
+  arr[T.csel - 1] = d === "free" ? (cur > 0 ? 0 : DEFAULT_CTIMES[T.csel - 1])
+    : !(cur > 0) ? DEFAULT_CTIMES[T.csel - 1] : Math.min(900, Math.max(20, cur + d));
   updateDoc(T.roomRef, { ctimes: arr }).catch(() => toast("시간을 바꾸지 못했어요."));
 }
 $("ctimeMinus").addEventListener("click", () => changeCTime(-10));
 $("ctimePlus").addEventListener("click", () => changeCTime(10));
+$("ctimeFree").addEventListener("click", () => changeCTime("free"));
 $("timePlus").addEventListener("click", () => changeTime(30));
 function changeTurn(d) {
   updateDoc(T.roomRef, { turnSec: Math.min(120, Math.max(10, turnSec() + d)) }).catch(() => toast("시간을 바꾸지 못했어요."));
@@ -1778,7 +1801,9 @@ document.querySelectorAll("[data-how]").forEach((b) => b.addEventListener("click
 $("endBtn").addEventListener("click", async () => {
   const msg = T.room && T.room.game === "wallgo"
     ? "지금 라운드를 끝낼까요?\n아직 끝나지 않은 대결은 지금까지 만든 땅 넓이로 승부를 정해요."
-    : "지금 라운드를 끝낼까요?\n아직 제출하지 않은 학생은 0점이에요.";
+    : T.room && T.room.game === "cube"
+      ? "지금 라운드를 끝낼까요?\n다 풀지 못한 학생은 지금까지 푼 문제만 채점해요."
+      : "지금 라운드를 끝낼까요?\n아직 제출하지 않은 학생은 0점이에요.";
   if (await confirmBox(msg, "끝내기")) endRound();
 });
 $("answerBtn").addEventListener("click", () => {

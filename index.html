@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v2.1">
+<link rel="stylesheet" href="style.css?v=v2.2">
 </head>
 <body>
 
@@ -332,8 +332,9 @@
             <button class="btn round" id="ctimeMinus">−</button>
             <b id="ctimeLabel">1:00</b>
             <button class="btn round" id="ctimePlus">＋</button>
-            <small>(10초씩)</small>
+            <button class="btn ghost small free-btn" id="ctimeFree">♾️ 제한 없음</button>
           </div>
+          <p class="hint free-note hidden" id="ctimeNote">♾️ 시간 제한이 없어요. 모든 학생이 5문제를 다 풀면 자동으로 끝나요. 오래 걸리는 학생이 있으면 [라운드 끝내기]를 누르세요. 그때까지 푼 문제만 채점하고, 다 맞힌 학생의 등수 보너스는 끝낸 순서대로 그대로 받아요.</p>
           <p class="hint">스타트를 누르면 고른 단계에서 아직 안 나온 문제 5개가 모든 학생에게 똑같이 나가요. 5개를 모두 맞히면 끝낸 순서대로 보너스, 일부만 맞히면 맞힌 만큼 점수를 받아요.</p>
         </div>
         <div id="wgPanel" class="hidden">
@@ -528,6 +529,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v2.1"></script>
+<script type="module" src="app.js?v=v2.2"></script>
 </body>
 </html>
