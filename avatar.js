@@ -30,10 +30,11 @@ export const OPTION_LABELS = {
   body: BODY_NAMES
 };
 
-// 날개 단계: 점수로 자람
+// 날개 단계: 총 점수(새 이벤트를 해도 남는 점수)가 기준 점수를 넘을 때마다 한 단계씩 자람
 export const WING_LEVELS = [
-  { min: 0, name: "새싹 날개" }, { min: 15, name: "아기 날개" }, { min: 40, name: "반짝 날개" },
-  { min: 80, name: "큰 날개" }, { min: 130, name: "황금 날개" }
+  { min: 0, name: "새싹 날개" }, { min: 20, name: "아기 날개" }, { min: 50, name: "솜털 날개" },
+  { min: 90, name: "반짝 날개" }, { min: 140, name: "큰 날개" }, { min: 200, name: "무지개 날개" },
+  { min: 280, name: "황금 날개" }, { min: 380, name: "전설의 날개" }
 ];
 export function wingLevel(score) {
   let lv = 0;
@@ -63,8 +64,10 @@ export function avatarSVG(av, score = 0, opts = {}) {
   const id = "av" + (++seq);
   const skin = SKIN[a.skin], skinD = shade(skin, -18), hair = HAIR[a.hairColor], hairD = shade(hair, -22), B = BODY[a.body];
   const p = [];
-  p.push(`<svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" class="${opts.cls || "avatar"}" role="img" aria-label="천사 캐릭터">`);
-  p.push(`<defs><linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${lv >= 4 ? "#fff6c9" : "#ffffff"}"/><stop offset="1" stop-color="${lv >= 4 ? "#ffd166" : "#d6e6ff"}"/></linearGradient></defs>`);
+  p.push(`<svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" class="${opts.cls || "avatar"}" overflow="visible" role="img" aria-label="천사 캐릭터">`);
+  const WC = lv >= 6 ? ["#fff8d6", "#ffd166", "#f0a92e"] : lv === 5 ? ["#ffd1e1", "#cfe4ff", "#c8f3dc"] : lv >= 3 ? ["#ffffff", "#e6f0ff", "#c9dcff"] : ["#ffffff", "#f2f6ff", "#d6e6ff"];
+  p.push(`<defs><linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="1">${WC.map((c, i) => `<stop offset="${i / 2}" stop-color="${c}"/>`).join("")}</linearGradient>`
+    + `<radialGradient id="${id}g"><stop offset="0" stop-color="#ffe680" stop-opacity=".7"/><stop offset="1" stop-color="#ffe680" stop-opacity="0"/></radialGradient></defs>`);
   p.push(`<ellipse cx="60" cy="146" rx="30" ry="3.5" fill="#000" opacity=".08"/>`);
   p.push(wings(lv, id));
   // 뒷머리
@@ -79,7 +82,10 @@ export function avatarSVG(av, score = 0, opts = {}) {
   p.push(hairFront(a.hair, hair, hairD));
   // 후광
   p.push(`<ellipse cx="60" cy="10" rx="17" ry="4.6" fill="none" stroke="#ffd166" stroke-width="3.4"/>`);
-  if (lv >= 4) p.push(`<g fill="#ffd166"><path d="M16 30l1.6 3.6 3.6 1.6-3.6 1.6L16 40.4l-1.6-3.6-3.6-1.6 3.6-1.6z"/><path d="M104 22l1.3 2.9 2.9 1.3-2.9 1.3-1.3 2.9-1.3-2.9-2.9-1.3 2.9-1.3z"/></g>`);
+  // 반짝이: 단계가 높을수록 많이
+  const SP = [[16, 30, 1], [104, 22, .8], [10, 74, .7], [110, 70, .9], [22, 112, .6], [100, 108, .7]];
+  const nSp = lv >= 7 ? 6 : lv >= 6 ? 4 : lv >= 3 ? 2 : 0;
+  if (nSp) p.push(`<g fill="${lv >= 6 ? "#ffcc33" : "#a9c6ff"}">` + SP.slice(0, nSp).map(([x, y, k]) => `<path transform="translate(${x} ${y}) scale(${k})" d="M0 -5l1.6 3.4 3.4 1.6-3.4 1.6L0 5l-1.6-3.4-3.4-1.6 3.4-1.6z"/>`).join("") + `</g>`);
   p.push(`</svg>`);
   return p.join("");
 }
@@ -90,10 +96,15 @@ function shade(hex, amt) {
 }
 function wings(lv, id) {
   if (lv === 0) return `<g fill="url(#${id}w)" stroke="#c9dafc" stroke-width="1.5"><ellipse cx="43" cy="96" rx="5" ry="7" transform="rotate(-25 43 96)"/><ellipse cx="77" cy="96" rx="5" ry="7" transform="rotate(25 77 96)"/></g>`;
-  const s = [0, 0.62, 0.8, 1, 1.18][lv];
-  const one = `<path d="M0 0 C-14 -22 -40 -26 -46 -12 C-50 -2 -40 4 -28 4 C-40 8 -44 18 -34 22 C-24 26 -12 16 -4 8 Z" fill="url(#${id}w)" stroke="${lv >= 4 ? "#e9b23c" : "#c9dafc"}" stroke-width="2"/>`
-    + (lv >= 2 ? `<path d="M-10 -4 C-20 -12 -30 -14 -36 -10 M-12 4 C-22 4 -30 8 -32 12" stroke="${lv >= 4 ? "#f0c35a" : "#d6e2fb"}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : "");
-  return `<g transform="translate(46 92) scale(${s})">${one}</g><g transform="translate(74 92) scale(${-s} ${s})">${one}</g>`;
+  const s = [0, 0.5, 0.62, 0.74, 0.86, 0.96, 1.06, 1.14][lv];
+  const edge = lv >= 6 ? "#e9a92e" : lv === 5 ? "#c7b5ff" : "#c9dafc";
+  const feather = lv >= 6 ? "#f0c35a" : lv === 5 ? "#ffffff" : "#d6e2fb";
+  const one = `<path d="M0 0 C-14 -22 -40 -26 -46 -12 C-50 -2 -40 4 -28 4 C-40 8 -44 18 -34 22 C-24 26 -12 16 -4 8 Z" fill="url(#${id}w)" stroke="${edge}" stroke-width="2"/>`
+    + (lv >= 2 ? `<path d="M-10 -4 C-20 -12 -30 -14 -36 -10" stroke="${feather}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : "")
+    + (lv >= 3 ? `<path d="M-12 4 C-22 4 -30 8 -32 12" stroke="${feather}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : "")
+    + (lv >= 4 ? `<path d="M-8 -12 C-16 -20 -26 -22 -32 -20 M-14 12 C-20 14 -24 18 -26 20" stroke="${feather}" stroke-width="1.4" fill="none" stroke-linecap="round"/>` : "");
+  const glow = lv >= 7 ? `<ellipse cx="60" cy="88" rx="62" ry="40" fill="url(#${id}g)"/>` : "";
+  return glow + `<g transform="translate(46 92) scale(${s})">${one}</g><g transform="translate(74 92) scale(${-s} ${s})">${one}</g>`;
 }
 function face(k, skin, skinD) {
   const st = `fill="${skin}" stroke="${skinD}" stroke-width="1.6"`;

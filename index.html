@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v1.7">
+<link rel="stylesheet" href="style.css?v=v1.8">
 </head>
 <body>
 
@@ -181,7 +181,7 @@
       </div>
       <div class="card how-card">
         <h3>📖 게임 방법</h3>
-        <p class="hint">궁금한 게임을 누르면 설명 천사가 그림으로 알려 줘요.</p>
+        <p class="hint">궁금한 게임을 누르면 안내 천사가 그림으로 알려 줘요.</p>
         <div class="how-btns">
           <button class="btn ghost how-btn" data-how="fence">🧩 울타리치기 방법</button>
           <button class="btn ghost how-btn" data-how="wallgo">🧱 벽바둑 1 방법</button>
@@ -261,7 +261,7 @@
 <section id="teacher" class="screen">
   <header class="bar teacher-bar">
     <div class="bar-left">
-      <span class="t-title"><svg class="mini-sheep"><use href="#sheep"/></svg>엔젤스 플랜</span>
+      <span class="t-title"><img class="mini-porong" src="img/porong-wave.jpg" alt="포롱이">엔젤스 플랜</span>
       <span class="room-code">방 번호 <b id="tCode">----</b></span>
       <span class="chip memo-chip hidden" id="tMemo"></span>
       <span class="chip">👥 <b id="tCount">0</b>명</span>
@@ -353,7 +353,7 @@
       <span class="ex-step" id="exStep"></span>
     </div>
     <div class="ex-body">
-      <div class="ex-guide"><img id="exImg" src="img/guide-main.jpg" alt="설명 천사"><span class="ex-name">설명 천사</span></div>
+      <div class="ex-guide"><img id="exImg" src="img/guide-main.jpg" alt="안내 천사"><span class="ex-name">안내 천사</span></div>
       <div class="ex-main">
         <div class="ex-bubble"><b id="exTitle"></b><p id="exText"></p></div>
         <div class="ex-demo" id="exDemo">
@@ -481,6 +481,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v1.7"></script>
+<script type="module" src="app.js?v=v1.8"></script>
 </body>
 </html>

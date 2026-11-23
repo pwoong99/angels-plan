@@ -6,12 +6,12 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.7";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.7";
-import * as WG from "./wallgo.js?v=v1.7";
-import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.7";
+import { PUZZLES } from "./puzzles.js?v=v1.8";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.8";
+import * as WG from "./wallgo.js?v=v1.8";
+import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.8";
 
-const VERSION = "v1.7";
+const VERSION = "v1.8";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -213,7 +213,9 @@ function avOf(p) {
   const a = {}; PART_ORDER.forEach((k, i) => (a[k] = (h >>> (i * 3)) % PARTS[k].n));
   return a;
 }
-const avHTML = (p, cls = "avatar") => avatarSVG(avOf(p), p ? p.score || 0 : 0, { cls });
+// 날개 기준: 총 점수 (예전 학생은 총 점수가 없으면 이번 점수)
+const wingScore = (p) => Math.max((p && p.total) || 0, (p && p.score) || 0);
+const avHTML = (p, cls = "avatar") => avatarSVG(avOf(p), wingScore(p), { cls });
 
 // ---------- 게임 설명 (설명 캐릭터가 장면마다 설명, 선생님이 넘김) ----------
 // 설명 캐릭터 그림: 새 그림을 받으면 img/ 에 넣고 아래 이름만 바꾸면 됨
@@ -320,7 +322,7 @@ function hideExplain() { $("explainView").classList.add("hidden"); exKey = null;
 
 // ---------- 엔젤스 플랜 소개 (포롱이) ----------
 const INTRO = [
-  { img: "porong-host", text: "안녕! 나는 엔젤스 플랜의 안내 천사, 포롱이야! 뿅!" },
+  { img: "porong-host", text: "안녕! 나는 엔젤스 플랜의 구름 천사, 포롱이야! 뿅!" },
   { img: "porong-wand", text: "엔젤스 플랜은 우리 반 친구들이 함께 머리를 쓰는 두뇌 게임 대회야." },
   { img: "porong-wave", text: "여기서는 아무도 탈락하지 않아. 처음부터 끝까지 모두 함께 게임을 즐기는 거야!" },
   { img: "porong-oh", text: "이기는 것도 좋지만, 규칙을 지키고 친구를 응원하는 따뜻한 천사 마음이 더 중요해." },
@@ -726,7 +728,7 @@ let myAngelKey = null;
 function renderMyAngel() {
   const me = ST.me;
   if (!me) return;
-  const info = wingInfo(me.score || 0);
+  const ws = wingScore(me), info = wingInfo(ws);
   $("stAngelTitle").textContent = `😇 ${me.name || ST.name}의 천사`;
   const key = JSON.stringify(avOf(me)) + ":" + info.lv;
   if (key !== myAngelKey) {
@@ -736,9 +738,9 @@ function renderMyAngel() {
   }
   $("stWingName").textContent = `🪽 ${info.name} (Lv.${info.lv + 1})`;
   const cur = WING_LEVELS[info.lv].min, nxt = WING_LEVELS[info.lv + 1];
-  $("stWingBar").style.width = nxt ? Math.min(100, ((me.score || 0) - cur) / (nxt.min - cur) * 100) + "%" : "100%";
-  $("stWingNext").textContent = nxt ? `${info.nextName}까지 ${info.next}점 남았어요` : "가장 멋진 황금 날개예요! ✨";
-  if (ST.wingLv !== undefined && info.lv > ST.wingLv) { confetti(); toast(`🪽 날개가 자랐어요! 이제 「${info.name}」`); }
+  $("stWingBar").style.width = nxt ? Math.min(100, (ws - cur) / (nxt.min - cur) * 100) + "%" : "100%";
+  $("stWingNext").textContent = `총 점수 ${ws}점 · ` + (nxt ? `${info.nextName}까지 ${info.next}점` : "가장 멋진 전설의 날개예요! ✨");
+  if (ST.wingLv !== undefined && info.lv > ST.wingLv) { confetti(); toast(`🪽 새 날개를 얻었어요! 이제 「${info.name}」`); }
   ST.wingLv = info.lv;
 }
 const AV = { draft: null, tab: "face", forced: false, asked: false };
@@ -750,7 +752,7 @@ function openAvatar(forced) {
   renderAvatarModal();
 }
 function renderAvatarModal() {
-  const score = (ST.me && ST.me.score) || 0, info = wingInfo(score);
+  const score = wingScore(ST.me), info = wingInfo(score);
   $("avPreview").innerHTML = avatarSVG(AV.draft, score);
   $("avWingNote").textContent = `지금 날개: ${info.name} · 게임에서 점수를 모으면 날개가 자라요!`;
   $("avTabs").innerHTML = PART_ORDER.map((k) => `<button class="av-tab ${k === AV.tab ? "active" : ""}" data-avtab="${k}">${PARTS[k].name}</button>`).join("");
@@ -784,10 +786,9 @@ function renderStudentRank() {
   const list = ranked(ST.players.map((p) => ({ ...p })));
   const mine = list.find((p) => p.id === ST.name);
   $("stRankTxt").textContent = mine ? `${mine.rank}등 / ${list.length}명` : "-";
-  $("stRankList").innerHTML = list.slice(0, 10).map((p) =>
-    `<li class="${p.id === ST.name ? "me" : ""}"><span class="no">${p.rank}</span><span class="nm">${esc(p.name)}</span><span class="sc">${p.score || 0}점</span></li>`
-  ).join("") + (mine && mine.rank > 10
-    ? `<li class="me"><span class="no">${mine.rank}</span><span class="nm">${esc(mine.name)}</span><span class="sc">${mine.score || 0}점</span></li>` : "");
+  const medal = (n) => (n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : n);
+  const row = (p) => `<li class="${p.id === ST.name ? "me" : ""}"><span class="no">${medal(p.rank)}</span><span class="rk-av">${avHTML(p)}</span><span class="nm">${esc(p.name)}<small>🪽 ${wingInfo(wingScore(p)).name}</small></span><span class="sc">${p.score || 0}점</span></li>`;
+  $("stRankList").innerHTML = list.slice(0, 10).map(row).join("") + (mine && mine.rank > 10 ? row(mine) : "");
   const r0 = ST.room, tc = r0 && GAMES[r0.game] && GAMES[r0.game].team ? r0.teamCount || 0 : 0;
   const hasTeams = tc > 0 && ST.players.some((p) => teamOf(p, tc));
   $("stTeamCard").hidden = !hasTeams;
@@ -1225,7 +1226,7 @@ function renderTeacher() {
   // 점수 순위 목록
   const medal = (n) => (n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : n);
   $("tRankList").innerHTML = list.map((p) => {
-    const w = wingInfo(p.score || 0);
+    const w = wingInfo(wingScore(p));
     return `<li class="${p.rank <= 3 ? "top" + p.rank : ""}"><span class="no">${medal(p.rank)}</span><span class="pc-av">${avHTML(p)}</span><span class="nm">${esc(p.name)}<small>🪽 ${w.name}</small></span><span class="sc">${p.score || 0}</span></li>`;
   }).join("") || `<li>아직 학생이 없어요.</li>`;
   $("tSummary").textContent = r.round > 0
@@ -1336,7 +1337,7 @@ async function gradeOne(p, round) {
   if (ok) { rank = correctCount(round) + 1; points = calcPoints(pts(), rank, r.level); }
   const result = { round, game: "fence", correct: ok, rank, points, reason: ok ? "ok" : late ? "late" : "wrong" };
   T.graded.set(round + "|" + p.id, result);
-  await updateDoc(pRefOf(p.id), { result, score: increment(points) });
+  await updateDoc(pRefOf(p.id), { result, score: increment(points), total: increment(points) });
 }
 
 // ----- 벽바둑 점수 -----
@@ -1357,7 +1358,7 @@ function gradeMatches() {
       if (!p || (p.result && p.result.round === round) || T.graded.has(key)) continue;
       const result = wgResult(m, side, round);
       T.graded.set(key, result);
-      T.queue = T.queue.then(() => updateDoc(pRefOf(name), { result, score: increment(result.points) }))
+      T.queue = T.queue.then(() => updateDoc(pRefOf(name), { result, score: increment(result.points), total: increment(result.points) }))
         .catch((e) => { console.error(e); T.graded.delete(key); });
     }
   }
@@ -1382,7 +1383,7 @@ async function endRound() {
           if (!p || (p.result && p.result.round === round) || T.graded.has(key)) continue;
           const result = wgResult(mm, side, round);
           T.graded.set(key, result);
-          batch.update(pRefOf(name), { result, score: increment(result.points) });
+          batch.update(pRefOf(name), { result, score: increment(result.points), total: increment(result.points) });
         }
       }
     } else {
@@ -1438,7 +1439,7 @@ async function startWallgo() {
   if (list.length % 2) {
     const p = list[list.length - 1];
     const result = { round, game: "wallgo", outcome: "bye", points: P.win };
-    batch.update(pRefOf(p.id), { mt: { round, bye: true }, result, score: increment(P.win) });
+    batch.update(pRefOf(p.id), { mt: { round, bye: true }, result, score: increment(P.win), total: increment(P.win) });
     T.graded.set(round + "|" + p.id, result);
   }
   batch.update(T.roomRef, { status: "playing", game: "wallgo", round, startAt: serverTimestamp(), turnSec: sec, explain: deleteField() });
@@ -1582,7 +1583,7 @@ $("ptsSave").addEventListener("click", async () => {
 // 새 이벤트 시작: 점수·팀·대결 기록 초기화 (방과 학생 명단은 그대로)
 $("tResetBtn").addEventListener("click", async () => {
   if (T.room && T.room.status === "playing") return toast("라운드가 끝난 뒤에 시작할 수 있어요.");
-  if (!(await confirmBox("새 이벤트를 시작할까요?\n모든 학생의 점수와 팀이 초기화돼요.", "새 이벤트 시작"))) return;
+  if (!(await confirmBox("새 이벤트를 시작할까요?\n모든 학생의 이번 점수와 팀이 초기화돼요.\n(총 점수와 천사 날개는 그대로 남아요)", "새 이벤트 시작"))) return;
   try {
     const batch = writeBatch(db);
     T.players.forEach((p) => batch.update(pRefOf(p.id), { score: 0, result: deleteField(), sub: deleteField(), mt: deleteField(), team: deleteField(), edges: "" }));
