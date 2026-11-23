@@ -107,6 +107,7 @@
 <section id="student" class="screen">
   <header class="bar">
     <div class="bar-left">
+      <span class="hd-av" id="stHeadAv"></span>
       <span class="chip name" id="stName"></span>
       <span class="chip" id="stRoom"></span>
       <span class="chip team-chip hidden" id="stTeam"></span>
@@ -128,6 +129,18 @@
       <button class="btn sun big-ish" id="practiceBtn">🧩 기다리는 동안 울타리치기 연습하기</button>
     </div>
     <div class="lobby-grid">
+      <div class="card my-angel">
+        <h3>😇 나의 천사</h3>
+        <div class="my-angel-row">
+          <div class="my-angel-av" id="stAv"></div>
+          <div class="my-angel-info">
+            <b id="stWingName">새싹 날개</b>
+            <div class="wing-bar"><i id="stWingBar"></i></div>
+            <small id="stWingNext"></small>
+            <button class="btn sun small" id="avEditBtn">🎨 캐릭터 꾸미기</button>
+          </div>
+        </div>
+      </div>
       <div class="card" id="stAnswerCard" hidden>
         <h3>✅ 이번 문제 정답</h3>
         <svg id="stAnswerBoard" class="board small"></svg>
@@ -259,10 +272,11 @@
           </div>
           <p class="hint">스타트를 누르면 방에 있는 학생들이 무작위로 2명씩 짝지어져요. 홀수면 1명은 부전승이에요.</p>
         </div>
+        <button class="btn sun big" id="explainBtn">📖 게임 설명 시작</button>
         <button class="btn primary big" id="startBtn">▶ 스타트</button>
         <button class="btn danger big hidden" id="endBtn">■ 라운드 끝내기</button>
       </div>
-      <div class="card">
+      <div class="card hidden" id="teamCard">
         <h3>🚩 팀</h3>
         <div id="teamCountBtns" class="tc-btns"></div>
         <button class="btn sun" id="teamSplitBtn">🎲 자동으로 나누기</button>
@@ -282,15 +296,75 @@
         <div class="t-right-head"><h3>⚔️ 대결 현황</h3><span id="tMatchInfo" class="summary"></span></div>
         <div id="tMatches" class="matches"></div>
       </div>
-      <div class="t-right-head">
-        <h3>학생 현황</h3>
-        <span id="tSummary" class="summary"></span>
+      <div class="t-two">
+        <div class="t-status">
+          <div class="t-right-head">
+            <h3>학생 현황</h3>
+            <span id="tSummary" class="summary"></span>
+          </div>
+          <div id="tPlayers" class="players"></div>
+        </div>
+        <div class="t-ranks">
+          <div class="t-right-head"><h3>🏆 점수 순위</h3></div>
+          <ol id="tRankList" class="t-rank-list"></ol>
+        </div>
       </div>
-      <div id="tPlayers" class="players"></div>
     </div>
   </div>
   <footer class="credit">만든이: 푸르이든 · <span class="ver"></span></footer>
 </section>
+
+<!-- 게임 설명 (설명 캐릭터) -->
+<div id="explainView" class="overlay explain hidden">
+  <div class="ex-card">
+    <div class="ex-top">
+      <span class="ex-game" id="exGame"></span>
+      <span class="ex-step" id="exStep"></span>
+    </div>
+    <div class="ex-body">
+      <div class="ex-guide"><img id="exImg" src="img/porong-host.jpg" alt="설명 캐릭터"></div>
+      <div class="ex-main">
+        <div class="ex-bubble"><b id="exTitle"></b><p id="exText"></p></div>
+        <div class="ex-demo" id="exDemo">
+          <svg id="exFence" class="board ex-board"></svg>
+          <svg id="exWall" class="board ex-board wg"></svg>
+          <div id="exExtra" class="ex-extra"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ex-foot">
+      <div class="intro-dots" id="exDots"></div>
+      <div class="ex-ctrl" id="exCtrl">
+        <button class="btn ghost" id="exPrev">◀ 이전</button>
+        <button class="btn primary" id="exNext">다음 ▶</button>
+        <button class="btn danger" id="exEnd">설명 끝내기</button>
+      </div>
+      <span class="ex-wait" id="exWait">선생님이 다음 장면으로 넘겨 줄 거예요 👀</span>
+    </div>
+  </div>
+</div>
+
+<!-- 나만의 천사 만들기 -->
+<div id="avModal" class="overlay hidden">
+  <div class="av-card">
+    <div class="av-head">
+      <h2>🎨 나만의 천사 만들기</h2>
+      <button class="btn ghost small" id="avClose">닫기</button>
+    </div>
+    <div class="av-body">
+      <div class="av-preview">
+        <div id="avPreview"></div>
+        <small id="avWingNote"></small>
+        <button class="btn ghost small" id="avRandom">🎲 랜덤</button>
+      </div>
+      <div class="av-pick">
+        <div class="av-tabs" id="avTabs"></div>
+        <div class="av-opts" id="avOpts"></div>
+      </div>
+    </div>
+    <button class="btn primary big" id="avSave">이 캐릭터로 할래요!</button>
+  </div>
+</div>
 
 <!-- 순위판 -->
 <div id="rankOverlay" class="overlay hidden">

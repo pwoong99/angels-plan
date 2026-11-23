@@ -156,8 +156,8 @@ export function forceFinish(m) {
 const S = 60, M = 22, NS = "http://www.w3.org/2000/svg";
 let wgSeq = 0;
 export class WallBoard {
-  constructor(svg, { onPlace, onMove } = {}) {
-    this.svg = svg; this.onPlace = onPlace; this.onMove = onMove;
+  constructor(svg, { onPlace, onMove, onHint } = {}) {
+    this.svg = svg; this.onPlace = onPlace; this.onMove = onMove; this.onHint = onHint;
     this.sel = null; this.dest = null; this.m = null;
     svg.setAttribute("viewBox", `0 0 ${N * S + 2 * M} ${N * S + 2 * M}`);
     svg.addEventListener("click", (e) => this.click(e));
@@ -169,6 +169,7 @@ export class WallBoard {
   }
   xy(cell) { return [M + (cell % N) * S, M + Math.floor(cell / N) * S]; }
   draw() {
+    this.onStep && this.onStep();
     const m = this.m, svg = this.svg, P = this.uid || (this.uid = "wg" + (++wgSeq) + "-");
     const u = (id) => `url(#${P}${id})`;
     const grad = (id, dir, c) => `<linearGradient id="${P}${id}" x1="0" y1="0" x2="${dir === "v" ? 1 : 0}" y2="${dir === "v" ? 0 : 1}">${c.map((x, i) => `<stop offset="${i / (c.length - 1)}" stop-color="${x}"/>`).join("")}</linearGradient>`;
@@ -248,26 +249,58 @@ export class WallBoard {
     if (c2 - c1 === N) return [x1 + 4, y1 + S, x1 + S - 4, y1 + S];
     return [x1 + S, y1 + 4, x1 + S, y1 + S - 4];
   }
+  // 화면 좌표 → 판 좌표
+  toLocal(e) {
+    const p = this.svg.createSVGPoint();
+    p.x = e.clientX; p.y = e.clientY;
+    return p.matrixTransform(this.svg.getScreenCTM().inverse());
+  }
+  cellAt(x, y) {
+    const c = Math.floor((x - M) / S), r = Math.floor((y - M) / S);
+    return c >= 0 && c < N && r >= 0 && r < N ? r * N + c : null;
+  }
+  // 도착 칸이 정해진 뒤: 그 칸 안에서 누른 쪽 변, 또는 옆 칸을 누르면 그쪽 벽
+  wallFromTap(x, y) {
+    const d = this.dest, free = freeWallsAround(d, this.m.walls);
+    const cell = this.cellAt(x, y);
+    if (cell === null) return null;
+    if (cell !== d) { const w = wallBetween(d, cell); return free.includes(w) ? w : null; }
+    const [cx, cy] = this.xy(d), dx = x - (cx + S / 2), dy = y - (cy + S / 2);
+    const order = [];
+    if (Math.abs(dx) > Math.abs(dy)) order.push(dx > 0 ? d + 1 : d - 1, dy > 0 ? d + N : d - N);
+    else order.push(dy > 0 ? d + N : d - N, dx > 0 ? d + 1 : d - 1);
+    for (const n of order) { const w = wallBetween(d, n); if (w >= 0 && free.includes(w)) return w; }
+    return free.length === 1 ? free[0] : null;
+  }
   click(e) {
     if (!this.active || !this.m) return;
     const m = this.m, t = e.target;
-    if (t.dataset.wall !== undefined) {
-      const w = Number(t.dataset.wall), from = this.sel, to = this.dest;
-      this.sel = this.dest = null;
-      this.onMove && this.onMove(from, to, w);
-      return;
-    }
-    if (t.dataset.cell === undefined) return;
-    const c = Number(t.dataset.cell);
+    const { x, y } = this.toLocal(e);
+    if (t.dataset && t.dataset.wall !== undefined) return this.fireMove(Number(t.dataset.wall));
+    const c = this.cellAt(x, y);
     if (m.phase === "place") {
-      if (!occupied(m.stones).has(c)) this.onPlace && this.onPlace(c);
+      if (c !== null && !occupied(m.stones).has(c)) this.onPlace && this.onPlace(c);
       return;
     }
     if (m.phase !== "play") return;
-    const mine = m.stones[this.me].includes(c);
-    if (this.dest !== null && c === this.dest) { this.dest = null; this.draw(); return; }
-    if (mine && c !== this.sel) { this.sel = c; this.dest = null; this.draw(); return; }
-    if (this.sel !== null && reachable(m, this.sel).includes(c)) { this.dest = c; this.draw(); return; }
+    const mineAt = (cell) => cell !== null && m.stones[this.me].includes(cell);
+    if (this.dest !== null) {
+      if (mineAt(c) && c !== this.sel) { this.sel = c; this.dest = null; this.draw(); return; }
+      if (c === this.sel && this.sel !== this.dest) { this.dest = null; this.draw(); return; }
+      const w = this.wallFromTap(x, y);
+      if (w !== null) return this.fireMove(w);
+      if (this.sel !== null && c !== null && reachable(m, this.sel).includes(c)) { this.dest = c; this.draw(); return; }
+      this.onHint && this.onHint("벽을 세울 쪽(주황 점선)을 눌러요");
+      return;
+    }
+    if (mineAt(c)) { this.sel = c; this.dest = null; this.draw(); return; }
+    if (this.sel !== null && c !== null && reachable(m, this.sel).includes(c)) { this.dest = c; this.draw(); return; }
+    if (this.sel === null) this.onHint && this.onHint("먼저 내 말(점이 찍힌 구슬)을 눌러요");
     this.sel = this.dest = null; this.draw();
+  }
+  fireMove(w) {
+    const from = this.sel, to = this.dest;
+    this.sel = this.dest = null;
+    this.onMove && this.onMove(from, to, w);
   }
 }

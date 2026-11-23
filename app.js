@@ -9,8 +9,9 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { PUZZLES } from "./puzzles.js";
 import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js";
 import * as WG from "./wallgo.js";
+import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js";
 
-const VERSION = "v1.2";
+const VERSION = "v1.3";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -26,8 +27,8 @@ const auth = getAuth(fbApp);
 
 // ---------- 게임 목록 ----------
 const GAMES = {
-  fence: { name: "울타리치기", icon: "🧩", desc: "숫자를 보고 하나의 닫힌 울타리 완성하기 · 개인전" },
-  wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2명씩 짝지어 1:1 대결 · 벽을 세워 내 땅 넓히기" }
+  fence: { name: "울타리치기", icon: "🧩", desc: "숫자를 보고 하나의 닫힌 울타리 완성하기 · 개인전", team: false },
+  wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2명씩 짝지어 1:1 대결 · 벽을 세워 내 땅 넓히기", team: false }
 };
 // 울타리치기 단계: 연습1·연습2(3×3) → 1~8단계(4×4~7×7)
 const DEFAULT_TIMES = [60, 90, 120, 120, 180, 180, 240, 240, 360, 360];
@@ -183,6 +184,100 @@ function resultText(res) {
   return { ok: false, big: "😢 아쉬워요, 오답!", sm: "다음 라운드에 다시 도전해요 · 0점" };
 }
 
+// ---------- 캐릭터 ----------
+// 아직 캐릭터를 안 만든 학생은 이름으로 정해지는 기본 캐릭터
+function avOf(p) {
+  if (p && p.av) return p.av;
+  let h = 0; const n = (p && (p.name || p.id)) || "";
+  for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const a = {}; PART_ORDER.forEach((k, i) => (a[k] = (h >>> (i * 3)) % PARTS[k].n));
+  return a;
+}
+const avHTML = (p, cls = "avatar") => avatarSVG(avOf(p), p ? p.score || 0 : 0, { cls });
+
+// ---------- 게임 설명 (설명 캐릭터가 장면마다 설명, 선생님이 넘김) ----------
+// 설명 캐릭터 그림: 새 그림을 받으면 img/ 에 넣고 아래 이름만 바꾸면 됨
+const GUIDE_IMG = ["porong-host", "porong-wand", "porong-oh", "porong-cheer", "porong-wave", "porong-trophy"];
+const FENCE_DEMO = (() => { const L = PUZZLES[0], P = L.puzzles[0]; return { w: L.w, h: L.h, c: P.c, ans: decodeAnswer(P.a) }; })();
+const WG_DEMO = (() => {
+  let m = { phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, turnSec: DEFAULT_TURN, stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls() };
+  const snaps = { init: m };
+  while (m.phase === "place") m = { ...m, ...WG.randomAction(m) };
+  snaps.placed = m;
+  for (let i = 0; i < 8 && m.phase === "play"; i++) m = { ...m, ...WG.randomAction(m) };
+  snaps.mid = m;
+  let g = 0; while (m.phase !== "done" && g++ < 400) m = { ...m, ...WG.randomAction(m) };
+  snaps.end = m;
+  return snaps;
+})();
+const exFence = new Board($("exFence"));
+const exWall = new WG.WallBoard($("exWall"), {});
+const pill = (t, c = "") => `<span class="ex-pill ${c}">${t}</span>`;
+function fenceShow(edges, opt = {}) {
+  $("exFence").style.display = ""; $("exWall").style.display = "none";
+  exFence.load(FENCE_DEMO.w, FENCE_DEMO.h, FENCE_DEMO.c, edges);
+  if (opt.bad) exFence.setBad(opt.bad);
+  if (opt.fill) exFence.setFill(true);
+}
+function wallShow(m, opt = {}) {
+  $("exFence").style.display = "none"; $("exWall").style.display = "";
+  exWall.render(m, opt.me || null, { active: !!opt.active, showRegions: !!opt.regions });
+  if (opt.sel !== undefined) { exWall.me = m.turn; exWall.sel = opt.sel; exWall.dest = opt.dest !== undefined ? opt.dest : null; exWall.draw(); }
+}
+function noBoard() { $("exFence").style.display = "none"; $("exWall").style.display = "none"; }
+const EXPLAIN = {
+  fence: [
+    { title: "🧩 울타리치기란?", text: "숫자를 보고 점과 점을 이어서\n끊기지 않는 울타리 하나를 완성하는 퍼즐이에요.", show: () => fenceShow(new Set()) },
+    { title: "숫자의 뜻", text: "칸 안의 숫자는 그 칸을 둘러싼 울타리 개수예요.\n3이면 네 변 중 세 곳에 울타리가 있어요. 숫자가 없는 칸은 몰라요!",
+      show: () => {
+        const i = [...FENCE_DEMO.c].findIndex((ch) => ch === "3");
+        const k = i < 0 ? [...FENCE_DEMO.c].findIndex((ch) => ch !== ".") : i;
+        const r = Math.floor(k / FENCE_DEMO.w), c = k % FENCE_DEMO.w, w = FENCE_DEMO.w, HE = (FENCE_DEMO.h + 1) * w;
+        const around = [r * w + c, (r + 1) * w + c, HE + r * (w + 1) + c, HE + r * (w + 1) + c + 1];
+        fenceShow(new Set(around.filter((e) => FENCE_DEMO.ans.has(e))), { bad: [k] });
+      } },
+    { title: "하나로 닫힌 울타리", text: "울타리는 끊기지 않고 하나로 닫혀야 해요.\n두 개로 나뉘면 안 되고, 모든 점을 쓸 필요는 없어요.", show: () => fenceShow(FENCE_DEMO.ans, { fill: true }) },
+    { title: "울타리 치는 법", text: "점과 점 사이를 톡 누르거나, 점을 따라 쭉 그어요.\n[지우기]를 켜고 울타리를 누르면 지워져요.", show: () => fenceShow(new Set([...FENCE_DEMO.ans].slice(0, Math.ceil(FENCE_DEMO.ans.size / 2)))) },
+    { title: "점수", text: "제출은 딱 한 번! 틀리면 0점이에요.\n맞히면 기본 점수, 빨리 맞힐수록 보너스, 어려운 단계일수록 점수가 커져요.",
+      show: (r) => { noBoard(); const P = { ...DEFAULT_PTS, ...((r && r.pts) || {}) }; return pill(`맞히면 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill(P.mult ? "어려운 단계 ×3까지" : "배율 없음", "p") + pill("오답·시간 초과 0점"); } }
+  ],
+  wallgo: [
+    { title: "🧱 벽바둑 1이란?", text: "친구와 1:1로 겨루는 땅따먹기 게임이에요.\n7×7 판에서 각자 말 4개를 써요. 처음엔 2개씩 놓여 있어요.", show: () => wallShow(WG_DEMO.init) },
+    { title: "말 놓기", text: "나머지 말 2개는 번갈아 빈칸에 직접 놓아요.\n순서: 분홍 → 파랑 → 파랑 → 분홍", show: () => wallShow(WG_DEMO.placed) },
+    { title: "말 움직이기", text: "내 차례엔 내 말 하나를 0~2칸 움직여요.\n상하좌우로, 꺾어서 가도 돼요. 초록 칸이 갈 수 있는 곳!",
+      show: () => wallShow(WG_DEMO.placed, { active: true, sel: WG_DEMO.placed.stones[WG_DEMO.placed.turn][0] }) },
+    { title: "벽 세우기", text: "움직인 칸의 둘레 중 한 곳에 벽을 꼭 세워요. (주황 점선)\n벽과 다른 말은 지나갈 수 없고, 세운 벽은 없앨 수 없어요.",
+      show: () => { const m = WG_DEMO.mid, lm = WG.legalMoves(m, m.turn)[0]; wallShow(m, lm ? { active: true, sel: lm.from, dest: lm.to } : {}); } },
+    { title: "끝과 승부", text: "서로 다른 색 말이 같은 공간에 없으면 끝!\n내 말만 있는 공간의 칸 수가 내 땅이에요. 땅이 넓은 쪽이 이겨요.",
+      show: () => { const m = WG_DEMO.end; wallShow(m, { regions: true }); return pill(`분홍 땅 ${m.scoreA}칸`, "p") + pill(`파랑 땅 ${m.scoreB}칸`); } },
+    { title: "시간과 점수", text: "한 수마다 제한 시간이 있어요. 시간이 지나면 아무 곳에나 저절로 둬요.\n져도 참여 점수를 받아요!",
+      show: (r) => { noBoard(); const W = { ...DEFAULT_WG, ...((r && r.wg) || {}) }; return pill(`한 수 ${(r && r.turnSec) || DEFAULT_TURN}초`) + pill(`승리 ${W.win}점`, "g") + pill(`무승부 ${W.draw}점`, "y") + pill(`패배 ${W.lose}점`, "p") + pill("홀수면 1명 부전승"); } }
+  ]
+};
+let exKey = null;
+function showExplain(r, teacher) {
+  const ex = r && r.explain, steps = ex && EXPLAIN[ex.game];
+  if (!steps) { hideExplain(); return; }
+  const step = Math.max(0, Math.min(steps.length - 1, ex.step || 0)), S = steps[step];
+  $("explainView").classList.remove("hidden");
+  $("exCtrl").classList.toggle("hidden", !teacher);
+  $("exWait").classList.toggle("hidden", teacher);
+  $("exPrev").disabled = step === 0;
+  $("exNext").textContent = step === steps.length - 1 ? "설명 다 했어요 ✔" : "다음 ▶";
+  const key = ex.game + ":" + step + ":" + (teacher ? "t" : "s");
+  if (key === exKey) return;
+  exKey = key;
+  $("exGame").textContent = `${GAMES[ex.game].icon} ${GAMES[ex.game].name} 게임 설명`;
+  $("exStep").textContent = `${step + 1} / ${steps.length}`;
+  $("exDots").innerHTML = steps.map((_, k) => `<i class="${k === step ? "on" : ""}"></i>`).join("");
+  $("exImg").src = `img/${GUIDE_IMG[step % GUIDE_IMG.length]}.jpg`;
+  $("exTitle").textContent = S.title;
+  $("exText").textContent = S.text;
+  const extra = S.show(r) || "";
+  $("exExtra").innerHTML = extra;
+}
+function hideExplain() { $("explainView").classList.add("hidden"); exKey = null; }
+
 // ---------- 엔젤스 플랜 소개 (포롱이) ----------
 const INTRO = [
   { img: "porong-host", text: "안녕! 나는 엔젤스 플랜의 안내 천사, 포롱이야! 뿅!" },
@@ -286,6 +381,7 @@ $("teacherForm").addEventListener("submit", async (e) => {
 const userErr = (msg) => Object.assign(new Error(msg), { userMsg: msg });
 
 // 벽바둑 한 수 (트랜잭션: 두 기기가 동시에 두지 않도록)
+// 결과: { ok, err } — err가 있으면 실패 이유
 async function wgAct(mref, compute) {
   try {
     let did = false;
@@ -296,12 +392,25 @@ async function wgAct(mref, compute) {
       const d = compute(m);
       if (!d) return;
       if (d.phase === "done") d.endedAt = now();
-      else d.deadline = now() + (m.turnSec || DEFAULT_TURN) * 1000;
       tx.update(mref, d);
       did = true;
     });
-    return did;
-  } catch (e) { console.warn(e); return false; }
+    return { ok: did };
+  } catch (e) { console.warn("벽바둑 수 저장 실패", e); return { ok: false, err: e && e.code ? e.code : String(e) }; }
+}
+function wgFailMsg(r) {
+  if (!r || r.ok) return null;
+  if (r.err === "permission-denied") return "보안 규칙 때문에 막혔어요. 선생님께 알려 주세요.";
+  if (r.err) return "인터넷이 불안정해요. 다시 눌러 주세요.";
+  return "이미 차례가 넘어갔어요.";
+}
+// 한 수 시간: 기기 시계와 상관없이, 이 기기가 새 수를 처음 본 때부터 셈
+const turnClock = new Map();   // "대결id:수번호" → 처음 본 시각
+function turnLeft(m, id, extra = 0) {
+  const key = id + ":" + m.moveNo;
+  if (!turnClock.has(key)) turnClock.set(key, Date.now());
+  const sec = (m.turnSec || DEFAULT_TURN) + (m.moveNo === 0 ? 5 : 0);
+  return sec - (Date.now() - turnClock.get(key)) / 1000 + extra;
 }
 
 // =====================================================================
@@ -316,15 +425,22 @@ const wgBoard = new WG.WallBoard($("wgBoard"), {
     const m = ST.match, side = ST.me && ST.me.mt && ST.me.mt.side;
     if (!m || !side) return;
     const exp = m.moveNo;
-    wgAct(ST.matchRef, (x) => (x.moveNo === exp ? WG.applyPlace(x, side, cell) : null)).then((ok) => { if (!ok) toast("놓지 못했어요. 다시 해 보세요."); });
+    wgAct(ST.matchRef, (x) => (x.moveNo === exp ? WG.applyPlace(x, side, cell) : null)).then((r) => { const msg = wgFailMsg(r); if (msg) toast(msg); });
   },
   onMove: (from, to, wall) => {
     const m = ST.match, side = ST.me && ST.me.mt && ST.me.mt.side;
     if (!m || !side) return;
     const exp = m.moveNo;
-    wgAct(ST.matchRef, (x) => (x.moveNo === exp ? WG.applyMove(x, side, from, to, wall) : null)).then((ok) => { if (!ok) toast("두지 못했어요. 다시 해 보세요."); });
-  }
+    wgAct(ST.matchRef, (x) => (x.moveNo === exp ? WG.applyMove(x, side, from, to, wall) : null)).then((r) => { const msg = wgFailMsg(r); if (msg) toast(msg); });
+  },
+  onHint: (msg) => toast(msg)
 });
+wgBoard.onStep = () => {
+  const st = $("wgStatus"), m = ST.match, side = ST.me && ST.me.mt && ST.me.mt.side;
+  if (!st || !m || m.phase !== "play" || m.turn !== side) return;
+  st.textContent = wgBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러요 (주황 점선, 또는 그 방향 칸)"
+    : wgBoard.sel !== null ? "② 갈 칸을 눌러요 (초록 칸, 제자리도 OK)" : "내 차례! ① 움직일 내 말을 눌러요";
+};
 
 async function joinStudent(code, name) {
   await authReady;
@@ -383,7 +499,8 @@ function leaveStudent(msg) {
   ST.matchId = null;
   clearInterval(ST.tick); clearTimeout(ST.saveTimer);
   ST.joined = false;
-  closePractice();
+  closePractice(); hideExplain(); $("avModal").classList.add("hidden");
+  AV.asked = false; ST.wingLv = undefined; myAngelKey = null;
   showScreen("entry");
   $("entryMsg").textContent = msg || "";
 }
@@ -407,7 +524,10 @@ function renderStudent() {
   const r = ST.room, me = ST.me;
   if (!r || !me) return;
   $("stScore").textContent = me.score || 0;
-  const tc = r.teamCount || 0, tm = teamOf(me, tc);
+  renderMyAngel();
+  if (r.explain && r.status !== "playing") showExplain(r, false); else hideExplain();
+  if (!me.av && !AV.asked && r.status !== "playing") { AV.asked = true; openAvatar(true); }
+  const tc = GAMES[r.game] && GAMES[r.game].team ? r.teamCount || 0 : 0, tm = teamOf(me, tc);
   $("stTeam").textContent = teamLabel(tm);
   $("stTeam").classList.toggle("hidden", !tm);
   renderStudentRank();
@@ -502,7 +622,8 @@ function renderStudentWallgo(r, me, res) {
   if (!m) { status.textContent = "대결 준비 중…"; return; }
   const side = mt.side, opp = WG.other(side);
   const myName = side === "a" ? m.a : m.b, oppName = side === "a" ? m.b : m.a;
-  vs.innerHTML = `<span class="wg-tag side-${side}">나 ${esc(myName)}</span> <b>VS</b> <span class="wg-tag side-${opp}">${esc(oppName)}</span>`;
+  const oppP = ST.players.find((p) => p.id === oppName) || { name: oppName };
+  vs.innerHTML = `<span class="vs-av">${avHTML(me)}</span><span class="wg-tag side-${side}">나 ${esc(myName)}</span> <b>VS</b> <span class="wg-tag side-${opp}">${esc(oppName)}</span><span class="vs-av">${avHTML(oppP)}</span>`;
   const myTurn = m.phase !== "done" && m.turn === side;
   wgBoard.render(m, side, { active: myTurn, showRegions: m.phase === "done" });
   if (m.phase === "done") {
@@ -516,12 +637,72 @@ function renderStudentWallgo(r, me, res) {
   }
   if (m.phase === "place") {
     const left = m.stones[side].filter((c) => c < 0).length;
-    status.textContent = myTurn ? `내 차례! 말을 놓을 빈칸을 눌러요 (남은 말 ${left}개)` : "상대가 말을 놓는 중이에요…";
+    status.textContent = myTurn ? `내 차례! 말을 놓을 빈칸을 눌러요 (남은 말 ${left}개)` : `상대가 말을 놓는 중이에요… (순서: 나→상대→상대→나)`;
+  } else if (myTurn) {
+    status.textContent = wgBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러요 (주황 점선, 또는 그 방향 칸)"
+      : wgBoard.sel !== null ? "② 갈 칸을 눌러요 (초록 칸, 제자리도 OK)" : "내 차례! ① 움직일 내 말을 눌러요";
   } else {
-    status.textContent = myTurn ? "내 차례! ① 내 말 고르기 → ② 갈 칸(0~2칸) → ③ 벽 세울 곳" : "상대 차례예요… 어디에 벽을 세울지 미리 생각해 봐요!";
+    status.textContent = "상대 차례예요… 어디에 벽을 세울지 미리 생각해 봐요!";
   }
   if (myTurn) status.classList.add("my");
 }
+
+// ----- 나의 천사 (캐릭터 + 날개 성장) -----
+let myAngelKey = null;
+function renderMyAngel() {
+  const me = ST.me;
+  if (!me) return;
+  const info = wingInfo(me.score || 0);
+  const key = JSON.stringify(avOf(me)) + ":" + info.lv;
+  if (key !== myAngelKey) {
+    myAngelKey = key;
+    $("stAv").innerHTML = avHTML(me);
+    $("stHeadAv").innerHTML = avHTML(me);
+  }
+  $("stWingName").textContent = `🪽 ${info.name} (Lv.${info.lv + 1})`;
+  const cur = WING_LEVELS[info.lv].min, nxt = WING_LEVELS[info.lv + 1];
+  $("stWingBar").style.width = nxt ? Math.min(100, ((me.score || 0) - cur) / (nxt.min - cur) * 100) + "%" : "100%";
+  $("stWingNext").textContent = nxt ? `${info.nextName}까지 ${info.next}점 남았어요` : "가장 멋진 황금 날개예요! ✨";
+  if (ST.wingLv !== undefined && info.lv > ST.wingLv) { confetti(); toast(`🪽 날개가 자랐어요! 이제 「${info.name}」`); }
+  ST.wingLv = info.lv;
+}
+const AV = { draft: null, tab: "face", forced: false, asked: false };
+function openAvatar(forced) {
+  AV.draft = cleanAvatar(ST.me && ST.me.av ? ST.me.av : randomAvatar());
+  AV.forced = forced;
+  $("avClose").textContent = forced ? "나중에 할게요" : "닫기";
+  $("avModal").classList.remove("hidden");
+  renderAvatarModal();
+}
+function renderAvatarModal() {
+  const score = (ST.me && ST.me.score) || 0, info = wingInfo(score);
+  $("avPreview").innerHTML = avatarSVG(AV.draft, score);
+  $("avWingNote").textContent = `지금 날개: ${info.name} · 게임에서 점수를 모으면 날개가 자라요!`;
+  $("avTabs").innerHTML = PART_ORDER.map((k) => `<button class="av-tab ${k === AV.tab ? "active" : ""}" data-avtab="${k}">${PARTS[k].name}</button>`).join("");
+  let h = "";
+  for (let i = 0; i < PARTS[AV.tab].n; i++) {
+    const a = { ...AV.draft, [AV.tab]: i };
+    h += `<button class="av-opt ${AV.draft[AV.tab] === i ? "active" : ""}" data-avopt="${i}"><span class="av-mini">${avatarSVG(a, score)}</span>${esc(OPTION_LABELS[AV.tab][i])}</button>`;
+  }
+  $("avOpts").innerHTML = h;
+}
+$("avTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-avtab]"); if (b) { AV.tab = b.dataset.avtab; renderAvatarModal(); } });
+$("avOpts").addEventListener("click", (e) => { const b = e.target.closest("[data-avopt]"); if (b) { AV.draft[AV.tab] = Number(b.dataset.avopt); renderAvatarModal(); } });
+$("avRandom").addEventListener("click", () => { AV.draft = randomAvatar(); renderAvatarModal(); });
+$("avClose").addEventListener("click", () => $("avModal").classList.add("hidden"));
+$("avEditBtn").addEventListener("click", () => openAvatar(false));
+$("avSave").addEventListener("click", async () => {
+  if (!ST.pRef) return;
+  $("avSave").disabled = true;
+  try {
+    await updateDoc(ST.pRef, { av: cleanAvatar(AV.draft) });
+    $("avModal").classList.add("hidden");
+    toast("나만의 천사가 완성됐어요! 😇");
+  } catch (e) {
+    console.error(e);
+    toast(e && e.code === "permission-denied" ? "캐릭터 저장이 보안 규칙에 막혔어요. 선생님께 알려 주세요." : "저장하지 못했어요. 다시 눌러 주세요.");
+  } finally { $("avSave").disabled = false; }
+});
 
 function renderStudentRank() {
   if (!ST.me) return;
@@ -532,7 +713,7 @@ function renderStudentRank() {
     `<li class="${p.id === ST.name ? "me" : ""}"><span class="no">${p.rank}</span><span class="nm">${esc(p.name)}</span><span class="sc">${p.score || 0}점</span></li>`
   ).join("") + (mine && mine.rank > 10
     ? `<li class="me"><span class="no">${mine.rank}</span><span class="nm">${esc(mine.name)}</span><span class="sc">${mine.score || 0}점</span></li>` : "");
-  const tc = (ST.room && ST.room.teamCount) || 0;
+  const r0 = ST.room, tc = r0 && GAMES[r0.game] && GAMES[r0.game].team ? r0.teamCount || 0 : 0;
   const hasTeams = tc > 0 && ST.players.some((p) => teamOf(p, tc));
   $("stTeamCard").hidden = !hasTeams;
   if (hasTeams) {
@@ -548,20 +729,18 @@ function studentTick() {
   if (!r || r.status !== "playing") return;
   if (r.game === "wallgo") {
     const m = ST.match, mt = ST.me && ST.me.mt;
-    if (!m || !mt || mt.bye || m.phase === "done" || !m.deadline) { $("wgTimer").textContent = ""; return; }
-    const left = (m.deadline - now()) / 1000;
+    if (!m || !mt || mt.bye || m.phase === "done" || mt.round !== r.round) { $("wgTimer").textContent = ""; return; }
+    const left = turnLeft(m, mt.id);
     const el = $("wgTimer");
     el.textContent = fmtTime(left);
     el.classList.toggle("warn", left <= 8 && left > 0);
-    // 시간이 지나면 자동으로 두기 (상대 기기가 꺼져 있으면 내가 대신)
+    // 시간이 지나면 자동으로 두기 (상대 기기가 멈춰 있으면 4초 뒤 내가 대신). 실패하면 3초마다 다시
     const myTurn = m.turn === mt.side;
-    const late = now() > m.deadline + (myTurn ? 0 : 4000);
-    const key = mt.id + ":" + m.moveNo;
-    if (late && ST.autoKey !== key) {
-      ST.autoKey = key;
+    if (left <= (myTurn ? 0 : -4) && Date.now() - (ST.autoTry || 0) > 3000) {
+      ST.autoTry = Date.now();
       const exp = m.moveNo;
-      wgAct(ST.matchRef, (x) => (x.moveNo === exp && x.phase !== "done" && now() > x.deadline ? WG.randomAction(x) : null))
-        .then((ok) => { if (ok && myTurn) toast("⏰ 시간이 지나서 아무 곳에나 두었어요."); });
+      wgAct(ST.matchRef, (x) => (x.moveNo === exp && x.phase !== "done" ? WG.randomAction(x) : null))
+        .then((res) => { if (res.ok && myTurn) toast("⏰ 시간이 지나서 아무 곳에나 두었어요."); else if (res.err) toast(wgFailMsg(res)); });
     }
     return;
   }
@@ -675,7 +854,7 @@ $("prCheck").addEventListener("click", () => {
 // =====================================================================
 // 교사
 // =====================================================================
-const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, game: null, boardKey: null, answer: false, tick: null, autoKeys: new Set() };
+const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, game: null, boardKey: null, answer: false, tick: null, autoTry: new Map() };
 const tBoard = new Board($("tBoard"));
 
 async function teacherLogin(pw) {
@@ -719,8 +898,9 @@ async function startTeacher(code) {
   stopTeacher();
   localStorage.setItem("angel_teacher_room", code);
   const roomRef = doc(db, "rooms", code);
-  Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, game: null, boardKey: null, answer: false, autoKeys: new Set() });
+  Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, game: null, boardKey: null, answer: false, autoTry: new Map() });
   $("tCode").textContent = code;
+  hideExplain();
   showScreen("teacher");
   await syncClock(roomRef, "touchedAt");
   T.unsubs.push(onSnapshot(roomRef, (s) => {
@@ -805,8 +985,14 @@ function renderTeacher() {
   $("endBtn").classList.toggle("hidden", !playing);
   $("startBtn").textContent = `▶ ${GAMES[game].name} ${r.round > 0 ? r.round + 1 + "라운드 " : ""}스타트`;
 
-  // 팀
-  const tc = r.teamCount || 0;
+  // 설명 중이면 설명 화면 (선생님이 넘김)
+  if (r.explain) showExplain(r, true); else hideExplain();
+  $("explainBtn").classList.toggle("hidden", playing);
+  $("explainBtn").textContent = `📖 ${GAMES[game].name} 게임 설명 시작`;
+  // 팀: 팀 게임에서만
+  const teamGame = !!GAMES[game].team;
+  $("teamCard").classList.toggle("hidden", !teamGame);
+  const tc = teamGame ? r.teamCount || 0 : 0;
   $("teamCountBtns").innerHTML = [0, 2, 3, 4, 5, 6].map((n) =>
     `<button class="tc-btn ${n === tc ? "active" : ""}" data-tc="${n}">${n ? n + "팀" : "팀 없음"}</button>`).join("");
   $("teamSplitBtn").classList.toggle("hidden", !tc);
@@ -823,20 +1009,39 @@ function renderTeacher() {
   if (!playing) { $("tTimer").textContent = ""; $("tTimer").classList.remove("warn"); }
   renderMatches();
 
-  // 학생 카드
+  // 학생 카드 (팀이 있으면 팀별로 묶어서)
   const list = ranked(T.players.map((p) => ({ ...p })));
   let nOk = 0, nBad = 0, nSolve = 0, nWait = 0;
-  $("tPlayers").innerHTML = list.length ? list.map((p) => {
+  const card = (p) => {
     const st = playerState(p, r);
     if (st.ok || (st.done && st.cls === "ok")) nOk++; else if (st.done && !st.spectator) nBad++; else if (st.solving) nSolve++; else if (st.cls === "wait") nWait++;
     const t = teamOf(p, tc);
     return `<div class="pc ${st.cls}">
-      <div class="pc-top"><span class="pc-name">${esc(p.name)}</span><span class="pc-score">${p.score || 0}점</span></div>
+      <div class="pc-top"><span class="pc-head"><span class="pc-av">${avHTML(p)}</span><span class="pc-name">${esc(p.name)}</span></span><span class="pc-score">${p.score || 0}점</span></div>
       <div class="pc-rank">${p.rank}등 ${tc ? `<button class="team-badge" data-team="${esc(p.id)}" title="눌러서 팀 바꾸기">${t ? TEAMS[t].icon + " " + TEAMS[t].name.replace(" 천사팀", "") : "팀 없음"}</button>` : ""}</div>
       <div class="pc-st">${st.txt}</div>
       <button class="kick" data-kick="${esc(p.id)}" title="내보내기">✕</button>
     </div>`;
-  }).join("") : `<div class="empty">학생들이 방 번호 <b>${esc(T.code)}</b>로 들어오면 여기에 나타나요.</div>`;
+  };
+  const grouped = tc > 0 && list.some((p) => teamOf(p, tc));
+  let html = "";
+  if (!list.length) html = `<div class="empty">학생들이 방 번호 <b>${esc(T.code)}</b>로 들어오면 여기에 나타나요.</div>`;
+  else if (grouped) {
+    const tr = teamRanking(T.players, tc);
+    for (const x of tr) {
+      const mem = list.filter((p) => teamOf(p, tc) === x.t);
+      html += `<div class="team-group t${x.t}">${teamLabel(x.t)} <small>${mem.length}명 · 평균 ${x.avg}점 · 팀 ${x.rank}등</small></div>` + mem.map(card).join("");
+    }
+    const none = list.filter((p) => !teamOf(p, tc));
+    if (none.length) html += `<div class="team-group t0">팀 없음 <small>${none.length}명</small></div>` + none.map(card).join("");
+  } else html = list.map(card).join("");
+  $("tPlayers").innerHTML = html;
+  // 점수 순위 목록
+  const medal = (n) => (n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : n);
+  $("tRankList").innerHTML = list.map((p) => {
+    const w = wingInfo(p.score || 0);
+    return `<li class="${p.rank <= 3 ? "top" + p.rank : ""}"><span class="no">${medal(p.rank)}</span><span class="pc-av">${avHTML(p)}</span><span class="nm">${esc(p.name)}<small>🪽 ${w.name}</small></span><span class="sc">${p.score || 0}</span></li>`;
+  }).join("") || `<li>아직 학생이 없어요.</li>`;
   $("tSummary").textContent = r.round > 0
     ? (r.game === "wallgo" ? `대결 ${roundMatches().filter((m) => m.phase === "done").length} / ${roundMatches().length} 끝`
       : `정답 ${nOk} · 틀림/시간 초과 ${nBad} · 채점 중 ${nWait} · 푸는 중 ${nSolve}`) : "";
@@ -870,7 +1075,8 @@ function renderMatches() {
 
 function renderBigRank() {
   const tab = $("rankOverlay").dataset.tab || "solo";
-  const tc = (T.room && T.room.teamCount) || 0;
+  const g = T.room && GAMES[T.room.status === "playing" ? T.room.game : T.game];
+  const tc = g && g.team ? (T.room.teamCount || 0) : 0;
   $("rankTabs").classList.toggle("hidden", !tc);
   document.querySelectorAll(".rank-tab").forEach((b) => b.classList.toggle("active", b.dataset.rt === (tc ? tab : "solo")));
   const medal = (n) => (n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : n);
@@ -882,7 +1088,7 @@ function renderBigRank() {
   }
   $("bigRank").className = "big-rank";
   $("bigRank").innerHTML = ranked(T.players.map((p) => ({ ...p }))).map((p) =>
-    `<li class="${p.rank <= 3 ? "top" + p.rank : ""}"><span class="no">${medal(p.rank)}</span><span class="nm">${esc(p.name)}</span><span class="sc">${p.score || 0}점</span></li>`
+    `<li class="${p.rank <= 3 ? "top" + p.rank : ""}"><span class="no">${medal(p.rank)}</span><span class="big-av">${avHTML(p)}</span><span class="nm">${esc(p.name)}</span><span class="sc">${p.score || 0}점</span></li>`
   ).join("") || "<li>아직 학생이 없어요.</li>";
 }
 
@@ -893,12 +1099,13 @@ function teacherTick() {
     $("tTimer").textContent = "";
     // 두 기기가 다 멈춘 대결은 교사 화면이 대신 둠
     for (const m of roundMatches()) {
-      if (m.phase === "done" || !m.deadline || now() < m.deadline + 9000) continue;
-      const key = m.id + ":" + m.moveNo;
-      if (T.autoKeys.has(key)) continue;
-      T.autoKeys.add(key);
+      if (m.phase === "done" || turnLeft(m, m.id) > -7) continue;
+      const last = T.autoTry.get(m.id) || 0;
+      if (Date.now() - last < 4000) continue;
+      T.autoTry.set(m.id, Date.now());
       const exp = m.moveNo;
-      wgAct(mRefOf(m.id), (x) => (x.moveNo === exp && x.phase !== "done" && now() > x.deadline ? WG.randomAction(x) : null));
+      wgAct(mRefOf(m.id), (x) => (x.moveNo === exp && x.phase !== "done" ? WG.randomAction(x) : null))
+        .then((res) => { if (res.err === "permission-denied") toast("벽바둑 대결 저장이 보안 규칙에 막혔어요. angels-plan 규칙을 다시 게시해 주세요."); });
     }
     const ms_ = roundMatches();
     if (ms_.length && ms_.every((m) => m.phase === "done") && T.players.every((p) => playerState(p, r).done)) endRound();
@@ -1019,7 +1226,7 @@ async function startFence() {
   await updateDoc(T.roomRef, {
     status: "playing", game: "fence", round: (r.round || 0) + 1, level: lv, pid,
     puzzle: { w: L.w, h: L.h, c: L.puzzles[pid].c },
-    startAt: serverTimestamp(), duration: times()[lv - 1],
+    startAt: serverTimestamp(), duration: times()[lv - 1], explain: deleteField(),
     [`used.L${lv}`]: reset ? [pid] : arrayUnion(pid)
   });
 }
@@ -1037,8 +1244,7 @@ async function startWallgo() {
     const id = `${round}-${n}`, a = list[i].id, b = list[i + 1].id;
     batch.set(mRefOf(id), {
       round, a, b, phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, turnSec: sec,
-      stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls(),
-      deadline: now() + sec * 1000 + 5000
+      stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls()
     });
     batch.update(pRefOf(a), { mt: { round, id, side: "a" } });
     batch.update(pRefOf(b), { mt: { round, id, side: "b" } });
@@ -1049,7 +1255,7 @@ async function startWallgo() {
     batch.update(pRefOf(p.id), { mt: { round, bye: true }, result, score: increment(P.win) });
     T.graded.set(round + "|" + p.id, result);
   }
-  batch.update(T.roomRef, { status: "playing", game: "wallgo", round, startAt: serverTimestamp(), turnSec: sec });
+  batch.update(T.roomRef, { status: "playing", game: "wallgo", round, startAt: serverTimestamp(), turnSec: sec, explain: deleteField() });
   await batch.commit();
 }
 
@@ -1086,6 +1292,21 @@ function changeTurn(d) {
 $("turnMinus").addEventListener("click", () => changeTurn(-5));
 $("turnPlus").addEventListener("click", () => changeTurn(5));
 $("startBtn").addEventListener("click", startRound);
+$("explainBtn").addEventListener("click", () => {
+  if (!T.room || T.room.status === "playing") return;
+  updateDoc(T.roomRef, { explain: { game: T.game, step: 0 } }).catch(() => toast("설명을 시작하지 못했어요."));
+});
+function exGo(d) {
+  const ex = T.room && T.room.explain;
+  if (!ex) return;
+  const n = EXPLAIN[ex.game].length, step = (ex.step || 0) + d;
+  if (step >= n) return exStop();
+  updateDoc(T.roomRef, { "explain.step": Math.max(0, step) }).catch(() => toast("넘기지 못했어요."));
+}
+function exStop() { updateDoc(T.roomRef, { explain: deleteField() }).catch(() => toast("설명을 끝내지 못했어요.")); }
+$("exPrev").addEventListener("click", () => exGo(-1));
+$("exNext").addEventListener("click", () => exGo(1));
+$("exEnd").addEventListener("click", exStop);
 $("endBtn").addEventListener("click", async () => {
   const msg = T.room && T.room.game === "wallgo"
     ? "지금 라운드를 끝낼까요?\n아직 끝나지 않은 대결은 지금까지 만든 땅 넓이로 승부를 정해요."
@@ -1256,4 +1477,4 @@ $("newRoomBtn").addEventListener("click", async () => {
   } catch (e) { toast(e.userMsg || "새 방을 만들지 못했어요."); }
   finally { $("newRoomBtn").disabled = false; }
 });
-$("tLeave").addEventListener("click", () => { stopTeacher(); showScreen("entry"); });
+$("tLeave").addEventListener("click", () => { stopTeacher(); hideExplain(); showScreen("entry"); });
