@@ -43,15 +43,35 @@
 <div class="math-bg" id="mathBg" aria-hidden="true"></div>
 <div id="confetti" aria-hidden="true"></div>
 
+<!-- ===== 엔젤스 플랜 소개 (포롱이) ===== -->
+<section id="intro" class="screen active">
+  <button class="btn ghost small intro-skip" id="introSkip">건너뛰기 ⏭</button>
+  <div class="intro-stage" id="introStage">
+    <div class="intro-badge">😇 우리 반 두뇌 게임 대회</div>
+    <h1 class="intro-title">엔젤스 플랜</h1>
+    <div class="intro-cloud">
+      <img id="introImg" src="img/porong-host.jpg" alt="안내 천사 포롱이">
+    </div>
+    <div class="intro-bubble">
+      <span class="intro-name">포롱이</span>
+      <p id="introText"></p>
+      <div class="intro-foot">
+        <div class="intro-dots" id="introDots"></div>
+        <button class="btn primary" id="introNext">다음 ▶</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ===== 입장 화면 ===== -->
-<section id="entry" class="screen active">
+<section id="entry" class="screen">
   <div class="entry-card">
     <div class="logo">
       <div class="badge">😇 우리 반 두뇌 게임 대회</div>
       <h1>엔젤스 플랜</h1>
       <div class="mascot-row">
-        <svg class="mascot bob"><use href="#sheep"/></svg>
-        <div class="bubble">여러 가지 두뇌 게임으로<br>천사 날개를 모아 보자! 메에~</div>
+        <img class="porong bob" src="img/porong-wave.jpg" alt="포롱이">
+        <div class="bubble">여러 가지 두뇌 게임으로<br>천사 날개를 모아 보자! 뿅!</div>
       </div>
     </div>
 
@@ -78,6 +98,7 @@
     </form>
 
     <p id="entryMsg" class="msg"></p>
+    <button class="intro-again" id="introAgain">☁️ 포롱이의 엔젤스 플랜 소개 다시 보기</button>
   </div>
   <footer class="credit">만든이: 푸르이든 · <span class="ver"></span></footer>
 </section>
@@ -100,7 +121,7 @@
   <div id="stLobby" class="lobby">
     <div class="card wait-card">
       <div class="wait-mascot">
-        <svg class="mascot bob" id="stMascot"><use href="#sheep"/></svg>
+        <img class="porong bob" id="stMascot" src="img/porong-wave.jpg" alt="포롱이">
         <div class="bubble" id="stBubble">선생님이 시작하면 게임이 열려요!</div>
       </div>
       <div id="stResult" class="result hidden"></div>

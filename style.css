@@ -48,9 +48,9 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .mascot.small-m { width: 74px; height: 66px; }
 .bob { animation: bob 2.4s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(-6px); } }
-.mascot.jump { animation: jump .6s ease-in-out 3; }
+.mascot.jump, .porong.jump { animation: jump .6s ease-in-out 3; }
 @keyframes jump { 40% { transform: translateY(-22px) rotate(-6deg); } 70% { transform: translateY(0) rotate(4deg); } }
-.mascot.sad { animation: sad 1.2s ease-in-out 2; }
+.mascot.sad, .porong.sad { animation: sad 1.2s ease-in-out 2; }
 @keyframes sad { 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
 .bubble {
   position: relative; background: #fff; border: 3px solid var(--line); border-radius: 20px;
@@ -344,6 +344,31 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .big-rank.teams { columns: 1; }
 .big-rank small { font-size: .9rem; color: var(--muted); }
 
+/* ===== 소개 화면 (포롱이) ===== */
+#intro { align-items: center; justify-content: center; padding: 20px 16px 28px; overflow: hidden;
+  background: radial-gradient(circle at 50% 30%, #ffffff 0, #eaf2ff 45%, #dfe9ff 100%); }
+.intro-skip { position: absolute; top: 14px; right: 14px; z-index: 3; }
+.intro-stage { width: 100%; max-width: 640px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.intro-badge { font-family: "Jua"; background: #fff; color: var(--blue); padding: 6px 16px; border-radius: 999px; border: 2.5px solid var(--line); }
+.intro-title { margin: 0; font-size: 2.8rem; background: linear-gradient(90deg, var(--blue), var(--pink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.intro-cloud { width: min(380px, 78vw); aspect-ratio: 1.12; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  box-shadow: 0 0 0 10px rgba(255,255,255,.6), 0 18px 40px rgba(91,141,239,.22); animation: bob 3s ease-in-out infinite; }
+.intro-cloud img { width: 100%; height: 100%; object-fit: contain; transition: opacity .25s, transform .25s; }
+.intro-cloud img.swap { opacity: 0; transform: scale(.92); }
+.intro-bubble { position: relative; width: 100%; background: #fff; border: 3px solid var(--line); border-radius: 26px; padding: 18px 20px 14px; box-shadow: 0 8px 0 #dfe7fa; margin-top: 12px; }
+.intro-bubble::before { content: ""; position: absolute; top: -16px; left: 50%; margin-left: -14px; border: 14px solid transparent; border-bottom-color: var(--line); border-top: 0; }
+.intro-bubble::after { content: ""; position: absolute; top: -11px; left: 50%; margin-left: -11px; border: 11px solid transparent; border-bottom-color: #fff; border-top: 0; }
+.intro-name { position: absolute; top: -15px; left: 22px; font-family: "Jua"; background: var(--blue); color: #fff; padding: 3px 14px; border-radius: 999px; font-size: 1rem; }
+.intro-bubble p { word-break: keep-all; font-family: "Jua"; font-size: 1.4rem; line-height: 1.55; margin: 6px 0 12px; min-height: 4.65em; color: var(--ink); }
+.intro-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.intro-dots { display: flex; gap: 7px; }
+.intro-dots i { width: 10px; height: 10px; border-radius: 50%; background: #dbe4f7; transition: .2s; }
+.intro-dots i.on { background: var(--blue); width: 24px; border-radius: 6px; }
+#introNext { font-family: "Jua"; font-size: 1.15rem; min-width: 120px; }
+#introNext.final { background: var(--pink); box-shadow: 0 5px 0 var(--pink-d); }
+.intro-again { margin: 14px auto 0; display: block; border: 0; background: none; color: var(--muted); font-weight: 700; font-size: .92rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.porong { width: 116px; height: auto; flex: none; border-radius: 50%; background: #fff; }
+
 /* 축하 꽃가루 */
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
 #confetti i { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 3px; animation: fall linear forwards; }
@@ -361,6 +386,9 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
   .big-rank { columns: 1; }
 }
 @media (max-width: 520px) {
+  .intro-bubble p { font-size: 1.2rem; }
+  .intro-title { font-size: 2.2rem; }
+  .porong { width: 90px; }
   .timer { font-size: 2rem; }
   .tool { padding: 12px 12px; font-size: 1rem; }
   .mascot { width: 84px; height: 76px; }

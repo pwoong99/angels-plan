@@ -10,7 +10,7 @@ import { PUZZLES } from "./puzzles.js";
 import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js";
 import * as WG from "./wallgo.js";
 
-const VERSION = "v1.1";
+const VERSION = "v1.2";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -183,6 +183,57 @@ function resultText(res) {
   return { ok: false, big: "😢 아쉬워요, 오답!", sm: "다음 라운드에 다시 도전해요 · 0점" };
 }
 
+// ---------- 엔젤스 플랜 소개 (포롱이) ----------
+const INTRO = [
+  { img: "porong-host", text: "안녕! 나는 엔젤스 플랜의 안내 천사, 포롱이야! 뿅!" },
+  { img: "porong-wand", text: "엔젤스 플랜은 우리 반 친구들이 함께 머리를 쓰는 두뇌 게임 대회야." },
+  { img: "porong-wave", text: "여기서는 아무도 탈락하지 않아. 처음부터 끝까지 모두 함께 게임을 즐기는 거야!" },
+  { img: "porong-oh", text: "이기는 것도 좋지만, 규칙을 지키고 친구를 응원하는 따뜻한 천사 마음이 더 중요해." },
+  { img: "porong-cheerup", text: "틀리거나 져도 괜찮아. 다시 도전하는 친구가 진짜 멋진 천사야!" },
+  { img: "porong-trophy", text: "게임에서 점수를 모으면 천사 날개가 쑥쑥 자라! 그럼 시작해 볼까? 두근두근~" }
+];
+const IN = { i: 0, typing: null, full: "" };
+INTRO.forEach((x) => { const im = new Image(); im.src = `img/${x.img}.jpg`; });
+function introShow(i) {
+  IN.i = i;
+  const step = INTRO[i], img = $("introImg");
+  img.classList.add("swap");
+  setTimeout(() => { img.src = `img/${step.img}.jpg`; img.classList.remove("swap"); }, 180);
+  $("introDots").innerHTML = INTRO.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("");
+  const last = i === INTRO.length - 1;
+  $("introNext").textContent = last ? "엔젤스 플랜 시작하기 ✨" : "다음 ▶";
+  $("introNext").classList.toggle("final", last);
+  clearInterval(IN.typing);
+  IN.full = step.text;
+  let n = 0;
+  $("introText").textContent = "";
+  IN.typing = setInterval(() => {
+    n++;
+    $("introText").textContent = IN.full.slice(0, n);
+    if (n >= IN.full.length) { clearInterval(IN.typing); IN.typing = null; }
+  }, 45);
+}
+function introNext() {
+  if (IN.typing) { clearInterval(IN.typing); IN.typing = null; $("introText").textContent = IN.full; return; }
+  if (IN.i < INTRO.length - 1) introShow(IN.i + 1);
+  else introEnd();
+}
+function introEnd() {
+  clearInterval(IN.typing); IN.typing = null;
+  try { sessionStorage.setItem("angel_intro_seen", "1"); } catch (e) { /* 저장 안 됨 */ }
+  showScreen("entry");
+  if (IN.i === INTRO.length - 1) confetti();
+}
+$("introNext").addEventListener("click", (e) => { e.stopPropagation(); introNext(); });
+$("introStage").addEventListener("click", introNext);
+$("introSkip").addEventListener("click", introEnd);
+$("introAgain").addEventListener("click", () => { showScreen("intro"); introShow(0); });
+(() => {
+  let seen = false;
+  try { seen = sessionStorage.getItem("angel_intro_seen") === "1"; } catch (e) { /* 없음 */ }
+  if (seen) showScreen("entry"); else introShow(0);
+})();
+
 // ---------- 익명 로그인 ----------
 let user = null;
 const authReady = new Promise((resolve) => {
@@ -343,9 +394,11 @@ $("stLeave").addEventListener("click", async () => {
 function endAtOf(r) { const s = ms(r && r.startAt); return s ? s + r.duration * 1000 : null; }
 
 let celebrated = null;
+function porongFace(name) { const el = $("stMascot"); if (el) el.src = `img/porong-${name}.jpg`; }
 function celebrate(res) {
   if (!res || celebrated === res.round) return;
   celebrated = res.round;
+  porongFace(res.correct || res.outcome === "win" || res.outcome === "bye" ? "trophy" : res.outcome === "draw" ? "cheer" : "cheerup");
   if (res.correct || res.outcome === "win" || res.outcome === "bye") { confetti(); mascotMood($("stMascot"), "happy"); }
   else if (res.outcome !== "draw") mascotMood($("stMascot"), "sad");
 }
@@ -361,6 +414,7 @@ function renderStudent() {
 
   const playing = r.status === "playing";
   const res = me.result && me.result.round === r.round ? me.result : null;
+  if (!res && celebrated !== null && celebrated !== r.round) porongFace("wave");
   $("stGame").classList.toggle("hidden", !playing);
   $("stLobby").classList.toggle("hidden", playing);
   if (playing) closePractice();
@@ -383,7 +437,7 @@ function renderStudent() {
       celebrate(res);
     }
     $("stBubble").textContent = t
-      ? (t.ok ? "멋져! 천사 날개가 반짝반짝해! 메에~ 🎉" : "괜찮아! 다음 게임에서 꼭 해낼 수 있어!")
+      ? (t.ok ? "멋져! 천사 날개가 반짝반짝해! 뿅! 🎉" : "괜찮아! 다음 게임에서 꼭 해낼 수 있어!")
       : r.round > 0 ? "다음 게임을 기다리는 중이에요!" : "선생님이 게임을 시작하면 열려요!";
     const ans = r.status === "ended" && r.round > 0 && r.game !== "wallgo" ? answerOf(r) : null;
     $("stAnswerCard").hidden = !ans;
