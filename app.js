@@ -6,13 +6,14 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v2.2";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.2";
-import * as WG from "./wallgo.js?v=v2.2";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.2";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.2";
+import { PUZZLES } from "./puzzles.js?v=v2.3";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.3";
+import * as WG from "./wallgo.js?v=v2.3";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.3";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.3";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.3";
 
-const VERSION = "v2.2";
+const VERSION = "v2.3";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -30,8 +31,15 @@ const auth = getAuth(fbApp);
 const GAMES = {
   fence: { name: "울타리치기", icon: "🧩", desc: "숫자를 보고 하나의 닫힌 울타리 완성하기 · 개인전", team: false },
   wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2~4명이 한 조로 대결 · 벽을 세워 내 땅 넓히기", team: false },
+  wallgo2: { name: "벽바둑 2", icon: "🔷", desc: "벽바둑에 네모 말(곧게 3칸)·동그라미 말(꺾어서 2칸)이 생겼어요 · 2~4명", team: false },
+  sym: { name: "대칭 퍼즐", icon: "🦋", desc: "조각을 옮기고 돌려서 선대칭 모양 만들기 · 개인전 · 먼저 완성할수록 높은 등수", team: false },
   cube: { name: "큐브 세기", icon: "🧊", desc: "쌓인 큐브가 모두 몇 개인지 빨리 세기 · 개인전 · 한 판 5문제", team: false }
 };
+const isWG = (g) => g === "wallgo" || g === "wallgo2";
+// 대칭 퍼즐: 단계별 기본 제한 시간(0 = 제한 없음)
+const DEFAULT_STIMES = [60, 60, 90, 120, 150, 180, 240, 300];
+const symLabel = (lv) => { const i = symInfo(lv); return `${i.name} · 조각 ${i.k}개 · ${i.size}`; };
+const newWG = (game, n, extra) => (game === "wallgo2" ? WG.newMatch2(n, extra) : WG.newMatch(n, extra));
 // 큐브 세기: 한 판 문제 수와 단계별 기본 시간(5문제 전체)
 const CUBE_Q = 5;
 const DEFAULT_CTIMES = [40, 50, 60, 75, 90, 100, 120, 140, 160, 180];
@@ -42,9 +50,12 @@ const DEFAULT_TIMES = [60, 90, 120, 120, 180, 180, 240, 240, 360, 360];
 // 울타리치기 점수: 맞히면 기본 점수 + 빠른 순서 보너스(1등 +top … top등 +1), 단계 배율을 곱함
 const DEFAULT_PTS = { base: 10, top: 5, mult: true };
 const LEVEL_MULT = [0.5, 0.5, 1, 1, 1.5, 1.5, 2, 2, 3, 3];
-function calcPoints(P, rank, level) {
+// 대칭 퍼즐은 8단계라 배율표가 따로 있음
+const SYM_MULT = [0.5, 0.5, 1, 1, 1.5, 2, 2.5, 3];
+const multOf = (game, level) => (game === "sym" ? SYM_MULT : LEVEL_MULT)[level - 1] || 1;
+function calcPoints(P, rank, level, game = "fence") {
   const bonus = Math.max(0, P.top - (rank - 1));
-  const m = P.mult ? (LEVEL_MULT[level - 1] || 1) : 1;
+  const m = P.mult ? multOf(game, level) : 1;
   return Math.round((P.base + bonus) * m);
 }
 // 벽바둑 점수와 한 수 시간
@@ -178,7 +189,7 @@ function teamRanking(players, count) {
 
 function resultText(res) {
   if (!res) return null;
-  if (res.game === "wallgo") {
+  if (isWG(res.game)) {
     const sc = res.my !== undefined ? ` (${res.my}:${res.opp})` : "";
     if (res.outcome === "bye") return { ok: true, big: "🍀 부전승!", sm: `+${res.points}점 · 이번 라운드는 짝이 없어서 승리로 쳐요` };
     if (res.n > 2) {
@@ -242,7 +253,9 @@ const avHTML = (p, cls = "avatar") => avatarSVG(avOf(p), wingScore(p), { cls });
 const GUIDE_IMG = {
   fence: ["guide-main", "guide-point", "guide-think", "guide-book", "guide-thumb"],
   wallgo: ["guide-main", "guide-point", "guide-three", "guide-book", "guide-think", "guide-bow"],
-  cube: ["guide-main", "guide-think", "guide-point", "guide-thumb"]
+  wallgo2: ["guide-main", "guide-point", "guide-three", "guide-think", "guide-book", "guide-bow"],
+  cube: ["guide-main", "guide-think", "guide-point", "guide-thumb"],
+  sym: ["guide-main", "guide-point", "guide-think", "guide-thumb"]
 };
 const FENCE_DEMO = (() => { const L = PUZZLES[0], P = L.puzzles[0]; return { w: L.w, h: L.h, c: P.c, ans: decodeAnswer(P.a) }; })();
 const WG_DEMO = (() => {
@@ -256,6 +269,18 @@ const WG_DEMO = (() => {
   snaps.end = m;
   return snaps;
 })();
+const WG2_DEMO = (() => {
+  let m = WG.newMatch2(2, { turnSec: DEFAULT_TURN });
+  const snaps = { init: m };
+  while (m.phase === "place") m = { ...m, ...WG.randomAction(m) };
+  snaps.placed = m;
+  for (let i = 0; i < 8 && m.phase === "play"; i++) m = { ...m, ...WG.randomAction(m) };
+  snaps.mid = m;
+  let g = 0; while (m.phase !== "done" && g++ < 400) m = { ...m, ...WG.randomAction(m) };
+  snaps.end = m;
+  return snaps;
+})();
+const wg2Sel = (m, kind) => m.stones[m.turn].find((c, i) => c >= 0 && m.kinds[m.turn][i] === kind);
 const exFence = new Board($("exFence"));
 const exWall = new WG.WallBoard($("exWall"), {});
 const pill = (t, c = "") => `<span class="ex-pill ${c}">${t}</span>`;
@@ -271,7 +296,15 @@ function wallShow(m, opt = {}) {
   exWall.render(m, opt.me || null, { active: !!opt.active, showRegions: !!opt.regions });
   if (opt.sel !== undefined) { exWall.me = m.turn; exWall.sel = opt.sel; exWall.dest = opt.dest !== undefined ? opt.dest : null; exWall.draw(); }
 }
-function noBoard() { $("exFence").style.display = "none"; $("exWall").style.display = "none"; $("exCube").innerHTML = ""; $("exCube").style.display = "none"; }
+function noBoard() { $("exSym").style.display = "none"; $("exFence").style.display = "none"; $("exWall").style.display = "none"; $("exCube").innerHTML = ""; $("exCube").style.display = "none"; }
+const SYM_DEMO = SYM.levels[2].puzzles[0];
+let exSymBoard = null;
+function symShow(answer) {
+  noBoard();
+  $("exSym").style.display = "";
+  if (!exSymBoard) exSymBoard = new SymBoard($("exSym"));
+  exSymBoard.load(SYM_DEMO, answer ? answerState(SYM_DEMO) : initialState(SYM_DEMO), { locked: true });
+}
 const CUBE_DEMO = { L: CUBES[1], key: CUBES[1].puzzles[0] };
 function cubeShow(top) {
   noBoard();
@@ -306,6 +339,25 @@ const EXPLAIN = {
       show: () => { const m = WG_DEMO.end; wallShow(m, { regions: true }); return pill(`분홍 땅 ${m.scores.a}칸`, "p") + pill(`파랑 땅 ${m.scores.b}칸`); } },
     { title: "시간과 점수", text: "한 수마다 제한 시간이 있어요. 시간이 지나면 아무 곳에나 저절로 둬요.\n져도 참여 점수를 받아요!",
       show: (r) => { noBoard(); const W = { ...DEFAULT_WG, ...((r && r.wg) || {}) }; return pill(`한 수 ${(r && r.turnSec) || DEFAULT_TURN}초`) + pill(`1등 ${W.win}점`, "g") + pill(`중간 등수·무승부 ${W.draw}점`, "y") + pill(`꼴찌 ${W.lose}점`, "p"); } }
+  ],
+  wallgo2: [
+    { title: "🔷 벽바둑 2란?", text: "벽바둑 1과 같은 땅따먹기인데, 말이 두 종류예요!\n네모 말과 동그라미 말을 잘 골라 써야 해요.", show: () => wallShow(WG2_DEMO.init) },
+    { title: "말 놓기", text: "2명: 네모 2개 + 동그라미 2개 (정해진 자리에 하나씩, 직접 놓기도 하나씩)\n3~4명: 네모 1개(정해진 자리) + 동그라미 1개(직접 놓기)", show: () => wallShow(WG2_DEMO.placed) },
+    { title: "🟦 네모 말", text: "한 방향으로 곧게만 가요. 대신 1~3칸까지 멀리 갈 수 있어요!\n꺾을 수는 없어요. 제자리에 있어도 돼요.",
+      show: () => { const m = WG2_DEMO.placed; wallShow(m, { active: true, sel: wg2Sel(m, "s") }); return pill("곧게 1~3칸", "y"); } },
+    { title: "⚪ 동그라미 말", text: "벽바둑 1의 말처럼 1~2칸 움직여요. 꺾어서 가도 돼요!\n좁은 길을 돌아 나갈 때 좋아요.",
+      show: () => { const m = WG2_DEMO.placed; wallShow(m, { active: true, sel: wg2Sel(m, "r") }); return pill("꺾어서 1~2칸", "g"); } },
+    { title: "벽 세우기와 끝", text: "움직인 칸 둘레에 벽을 꼭 하나 세워요.\n서로 다른 색 말이 같은 공간에 없으면 끝! 내 말만 있는 공간이 내 땅이에요.",
+      show: () => { const m = WG2_DEMO.end; wallShow(m, { regions: true }); return pill(`분홍 땅 ${m.scores.a}칸`, "p") + pill(`파랑 땅 ${m.scores.b}칸`); } },
+    { title: "시간과 점수", text: "한 수마다 제한 시간이 있어요. 시간이 지나면 아무 곳에나 저절로 둬요.\n져도 참여 점수를 받아요!",
+      show: (r) => { noBoard(); const W = { ...DEFAULT_WG, ...((r && r.wg) || {}) }; return pill(`한 수 ${(r && r.turnSec) || DEFAULT_TURN}초`) + pill(`1등 ${W.win}점`, "g") + pill(`중간 등수·무승부 ${W.draw}점`, "y") + pill(`꼴찌 ${W.lose}점`, "p"); } }
+  ],
+  sym: [
+    { title: "🦋 대칭 퍼즐이란?", text: "흩어진 조각들을 모아서 선대칭 모양을 만드는 퍼즐이에요.\n선대칭: 한 줄을 따라 접으면 양쪽이 꼭 겹치는 모양!", show: () => symShow(false) },
+    { title: "옮기고 돌리기", text: "조각을 손가락으로 끌면 옮겨져요.\n조각을 한 번 톡 누르면 오른쪽으로 90° 돌아가요. (뒤집기는 안 돼요)", show: () => { symShow(false); return pill("끌기 = 옮기기", "y") + pill("톡 = 돌리기", "g"); } },
+    { title: "완성하면 저절로 제출!", text: "조각을 모두 겹치지 않게 붙여서 선대칭 모양을 만들면 바로 제출돼요.\n대칭축은 세로·가로·대각선 어느 쪽이든 괜찮아요. 정답 모양이 여러 개일 수도 있어요!", show: () => { symShow(true); return pill("점선 = 대칭축", "p"); } },
+    { title: "점수", text: "먼저 완성할수록 높은 등수!\n어려운 단계일수록 점수가 커져요.",
+      show: (r) => { noBoard(); const P = { ...DEFAULT_PTS, ...((r && r.pts) || {}) }; return pill(`완성 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill(P.mult ? "어려운 단계 ×3까지" : "배율 없음"); } }
   ],
   cube: [
     { title: "🧊 큐브 세기란?", text: "쌓여 있는 큐브가 모두 몇 개인지 세는 게임이에요.\n한 판에 5문제! 정확하게, 그리고 빠르게 세어 봐요.", show: () => cubeShow(false) },
@@ -655,10 +707,12 @@ function renderStudent() {
 
   if (playing) {
     $("fenceArea").classList.toggle("hidden", r.game !== "fence");
-    $("wgArea").classList.toggle("hidden", r.game !== "wallgo");
+    $("wgArea").classList.toggle("hidden", !isWG(r.game));
     $("cubeArea").classList.toggle("hidden", r.game !== "cube");
-    if (r.game === "wallgo") renderStudentWallgo(r, me, res);
+    $("symArea").classList.toggle("hidden", r.game !== "sym");
+    if (isWG(r.game)) renderStudentWallgo(r, me, res);
     else if (r.game === "cube") renderStudentCube(r, me, res);
+    else if (r.game === "sym") renderStudentSym(r, me, res);
     else renderStudentFence(r, me, res);
   } else {
     const box = $("stResult");
@@ -673,11 +727,14 @@ function renderStudent() {
       ? (t.ok ? "멋져! 천사 날개가 반짝반짝해! 뿅! 🎉" : "괜찮아! 다음 게임에서 꼭 해낼 수 있어!")
       : r.round > 0 ? "다음 게임을 기다리는 중이에요!" : "선생님이 게임을 시작하면 열려요!";
     const cubeEnd = r.status === "ended" && r.round > 0 && r.game === "cube" && r.cube;
+    const symEnd = r.status === "ended" && r.round > 0 && r.game === "sym" && r.sym;
+    $("stSymAns").style.display = symEnd ? "" : "none";
+    if (symEnd && stSymAnsKey !== r.round) { stSymAnsKey = r.round; stSymAns.load(r.sym, answerState(r.sym), { locked: true }); }
     const ans = r.status === "ended" && r.round > 0 && r.game === "fence" ? answerOf(r) : null;
-    $("stAnswerCard").hidden = !ans && !cubeEnd;
+    $("stAnswerCard").hidden = !ans && !cubeEnd && !symEnd;
     $("stAnswerBoard").style.display = ans ? "" : "none";
     $("stCubeAns").innerHTML = cubeEnd ? cubeReviewHTML(r, cubeMyAnswers(me, r.round)) : "";
-    $("stAnswerTitle").textContent = cubeEnd ? "✅ 이번 판 정답" : "✅ 이번 문제 정답";
+    $("stAnswerTitle").textContent = cubeEnd ? "✅ 이번 판 정답" : symEnd ? "✅ 정답 예시 (다른 모양도 대칭이면 정답!)" : "✅ 이번 문제 정답";
     if (ans && stAnswerKey !== r.round) {
       stAnswerKey = r.round;
       stAnswerBoard.load(r.puzzle.w, r.puzzle.h, r.puzzle.c);
@@ -722,13 +779,13 @@ function renderStudentWallgo(r, me, res) {
   status.className = "wg-status";
   $("wgBoardWrap").classList.toggle("hidden", !(mt && mt.id && ST.match));
   if (!mt) {
-    vs.textContent = "🧱 벽바둑 1";
+    vs.textContent = `${GAMES[r.game].icon} ${GAMES[r.game].name}`;
     status.textContent = "이번 대결은 이미 시작됐어요. 다음 게임에 함께해요!";
     $("wgTimer").textContent = "";
     return;
   }
   if (mt.bye) {
-    vs.textContent = "🧱 벽바둑 1";
+    vs.textContent = `${GAMES[r.game].icon} ${GAMES[r.game].name}`;
     status.textContent = "🍀 이번 라운드는 짝이 없어서 부전승이에요! 친구들 경기가 끝날 때까지 기다려요.";
     status.classList.add("ok");
     $("wgTimer").textContent = "";
@@ -757,7 +814,8 @@ function renderStudentWallgo(r, me, res) {
   if (m.phase === "place") {
     const left = m.stones[side].filter((c) => c < 0).length;
     const order = WG.placeOrder(m).map((sd) => WG.SIDE_NAMES[sd]).join("→");
-    status.textContent = myTurn ? `내 차례! 말을 놓을 빈칸을 눌러요 (남은 말 ${left}개)` : `${WG.SIDE_NAMES[m.turn]}(${m[m.turn]})가 말을 놓는 중… (순서: ${order})`;
+    const kd = m.v === 2 ? `${WG.KIND_NAMES[WG.nextPlaceKind(m, m.turn)]} 말을 ` : "말을 ";
+    status.textContent = myTurn ? `내 차례! ${kd}놓을 빈칸을 눌러요 (남은 말 ${left}개)` : `${WG.SIDE_NAMES[m.turn]}(${m[m.turn]})가 말을 놓는 중… (순서: ${order})`;
   } else if (myTurn) {
     status.textContent = wgBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러요 (주황 점선, 또는 그 방향 칸)"
       : wgBoard.sel !== null ? "② 갈 칸을 눌러요 (초록 칸, 제자리도 OK)" : "내 차례! ① 움직일 내 말을 눌러요";
@@ -766,6 +824,62 @@ function renderStudentWallgo(r, me, res) {
   }
   if (myTurn) status.classList.add("my");
 }
+
+// ----- 대칭 퍼즐 (학생) -----
+// 옮길 때마다 edges 칸에 "라운드:상태" 저장(새로고침해도 이어짐), 선대칭이 되면 바로 제출
+const SY = { round: null, saveT: null, sent: null };
+const syBoard = new SymBoard($("syBoard"), { onChange: (st, res) => symChange(st, res) });
+const stSymAns = new SymBoard($("stSymAns"));
+let stSymAnsKey = null;
+const SYM_WHY = { overlap: "조각끼리 겹쳐 있어요.", apart: "조각이 모두 붙어 있어야 해요.", notsym: "아직 선대칭이 아니에요. 접었을 때 꼭 맞는 모양을 만들어 봐요!", out: "" };
+function renderStudentSym(r, me, res) {
+  const pz = r.sym;
+  if (!pz) return;
+  const submitted = !!(me.sub && me.sub.round === r.round);
+  const end = endAtOf(r), timeUp = end !== null && now() > end;
+  const lock = submitted || timeUp || !!res || SY.sent === r.round;
+  if (SY.round !== r.round) {
+    SY.round = r.round; SY.sent = null;
+    let st = null;
+    if (submitted) st = decodeState(me.sub.edges, pz.p.length);
+    else if (typeof me.edges === "string" && me.edges.startsWith(r.round + ":")) st = decodeState(me.edges.slice(String(r.round).length + 1), pz.p.length);
+    syBoard.load(pz, st || initialState(pz), { locked: lock });
+    $("syLevel").textContent = `🦋 대칭 퍼즐 · ${symLabel(r.level)}`;
+  } else if (syBoard.locked !== lock) syBoard.setLocked(lock);
+  $("syReset").disabled = lock;
+  const msg = $("syMsg");
+  msg.className = "game-msg";
+  if (res) {
+    const t = resultText(res);
+    msg.textContent = `${t.big} ${t.ok ? `+${res.points}점` : "0점"}`;
+    msg.classList.add(t.ok ? "ok" : "bad");
+    celebrate(res);
+  } else if (submitted || SY.sent === r.round) { msg.textContent = "🦋 완성! 채점 중이에요…"; msg.classList.add("ok"); }
+  else if (timeUp) { msg.textContent = "⏰ 시간 종료!"; msg.classList.add("bad"); }
+}
+function symChange(st, res) {
+  const r = ST.room, me = ST.me;
+  if (!r || r.game !== "sym" || r.status !== "playing" || !ST.pRef) return;
+  if (me && me.sub && me.sub.round === r.round) return;
+  const txt = encodeState(st), round = r.round;
+  clearTimeout(SY.saveT);
+  if (res && res.ok) {
+    SY.sent = round;
+    renderStudent();
+    updateDoc(ST.pRef, { sub: { round, edges: txt, at: serverTimestamp() }, edges: `${round}:${txt}` })
+      .catch((e) => { console.error(e); SY.sent = null; toast("제출하지 못했어요. 시간이 끝났을 수 있어요."); renderStudent(); });
+    return;
+  }
+  const why = res && SYM_WHY[res.why];
+  $("syMsg").className = "game-msg"; $("syMsg").textContent = why || "";
+  SY.saveT = setTimeout(() => updateDoc(ST.pRef, { edges: `${round}:${txt}` }).catch(console.warn), 700);
+}
+$("syReset").addEventListener("click", () => {
+  const r = ST.room;
+  if (!r || r.game !== "sym" || !r.sym || syBoard.locked) return;
+  syBoard.load(r.sym, initialState(r.sym));
+  symChange(syBoard.state(), checkSym(r.sym, syBoard.state()));
+});
 
 // ----- 큐브 세기 (학생) -----
 // 진행 중 답은 edges 칸에 "라운드:답,답,…"로 저장(새로고침해도 이어짐), 다 풀면 sub로 제출
@@ -927,7 +1041,7 @@ let stWasUp = false;
 function studentTick() {
   const r = ST.room;
   if (!r || r.status !== "playing") return;
-  if (r.game === "wallgo") {
+  if (isWG(r.game)) {
     const m = ST.match, mt = ST.me && ST.me.mt;
     if (!m || !mt || mt.bye || m.phase === "done" || mt.round !== r.round) { $("wgTimer").textContent = ""; return; }
     const left = turnLeft(m, mt.id);
@@ -946,11 +1060,11 @@ function studentTick() {
   }
   const end = endAtOf(r);
   if (end === null) {   // 제한 시간 없음: 지난 시간만 보여 줌
-    for (const el of [$("stTimer"), $("cbTimer")]) { el.textContent = "⏱ " + fmtTime(elapsedOf(r)); el.classList.remove("warn"); el.classList.add("free"); }
+    for (const el of [$("stTimer"), $("cbTimer"), $("syTimer")]) { el.textContent = "⏱ " + fmtTime(elapsedOf(r)); el.classList.remove("warn"); el.classList.add("free"); }
     return;
   }
   const left = (end - now()) / 1000;
-  for (const el of [$("stTimer"), $("cbTimer")]) {
+  for (const el of [$("stTimer"), $("cbTimer"), $("syTimer")]) {
     el.classList.remove("free");
     el.textContent = fmtTime(left);
     el.classList.toggle("warn", left <= 10 && left > 0);
@@ -1039,7 +1153,7 @@ function prLoad(lv) {
   }).join("");
 }
 function openPractice() { $("practice").classList.remove("hidden"); prLoad(PR.lv); }
-function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); const cp = document.getElementById("cubePractice"); if (cp) cp.classList.add("hidden"); }
+function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); const cp = document.getElementById("cubePractice"); if (cp) cp.classList.add("hidden"); const sp = document.getElementById("symPractice"); if (sp) sp.classList.add("hidden"); }
 $("practiceBtn").addEventListener("click", openPractice);
 $("prClose").addEventListener("click", closePractice);
 $("prLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-prlv]"); if (b) prLoad(Number(b.dataset.prlv)); });
@@ -1067,7 +1181,7 @@ $("prHint").addEventListener("click", () => {
 // 벽바둑 AI와 연습 (점수 없음, 내 기기에서만)
 // =====================================================================
 const WP_LEVELS = [["easy", "🐣 쉬움"], ["normal", "🙂 보통"], ["hard", "🔥 어려움"]];
-const WP = { m: null, level: "easy", me: "a", n: 2, busy: false, timer: null };
+const WP = { m: null, level: "easy", me: "a", n: 2, v: 1, busy: false, timer: null };
 const wpBoard = new WG.WallBoard($("wpBoard"), {
   onPlace: (c) => wpHuman((x) => WG.applyPlace(x, WP.me, c)),
   onMove: (f, t, w) => wpHuman((x) => WG.applyMove(x, WP.me, f, t, w)),
@@ -1076,9 +1190,9 @@ const wpBoard = new WG.WallBoard($("wpBoard"), {
 wpBoard.onStep = () => wpStatus();
 function wpNew() {
   clearTimeout(WP.timer); WP.busy = false;
-  WP.m = WG.newMatch(WP.n);
+  WP.m = WP.v === 2 ? WG.newMatch2(WP.n) : WG.newMatch(WP.n);
   WP.me = WP.m.sides[Math.floor(Math.random() * WP.n)];
-  $("wpLevels").innerHTML = [2, 3, 4].map((k) => `<button class="pr-lv ${k === WP.n ? "active" : ""}" data-wpn="${k}">${k}명</button>`).join("")
+  $("wpLevels").innerHTML = [1, 2].map((v) => `<button class="pr-lv ${v === WP.v ? "active" : ""}" data-wpv="${v}">벽바둑 ${v}</button>`).join("") + `<span class="pr-gap"></span>` + [2, 3, 4].map((k) => `<button class="pr-lv ${k === WP.n ? "active" : ""}" data-wpn="${k}">${k}명</button>`).join("")
     + `<span class="pr-gap"></span>` + WP_LEVELS.map(([k, n]) => `<button class="pr-lv ${k === WP.level ? "active" : ""}" data-wplv="${k}">AI ${n}</button>`).join("");
   $("wpFace").src = "img/porong-wave.jpg";
   wpRender(); wpBot();
@@ -1118,12 +1232,39 @@ function wpStatus() {
     return;
   }
   if (WP.busy || m.turn !== WP.me) { el.textContent = "AI가 생각하는 중이야… 🤔"; return; }
-  if (m.phase === "place") el.textContent = `나는 ${color}! 말을 놓을 빈칸을 눌러 봐. (순서: ${WG.placeOrder(m).map((sd) => WG.SIDE_NAMES[sd]).join("→")})`;
+  if (m.phase === "place") el.textContent = `나는 ${color}! ${m.v === 2 ? WG.KIND_NAMES[WG.nextPlaceKind(m, m.turn)] + " " : ""}말을 놓을 빈칸을 눌러 봐. (순서: ${WG.placeOrder(m).map((sd) => WG.SIDE_NAMES[sd]).join("→")})`;
   else el.textContent = wpBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러 (주황 점선, 또는 그 방향 칸)"
     : wpBoard.sel !== null ? "② 갈 칸을 눌러 (초록 칸, 제자리도 OK)" : `내 차례(${color})! ① 움직일 내 말을 눌러 봐`;
 }
 function closeWgPractice() { clearTimeout(WP.timer); WP.busy = false; $("wgPractice").classList.add("hidden"); }
 $("wgPracBtn").addEventListener("click", () => { $("wgPractice").classList.remove("hidden"); wpNew(); });
+
+// =====================================================================
+// 대칭 퍼즐 혼자 연습하기 (점수 없음)
+// =====================================================================
+const SP = { lv: 0, i: -1, pz: null };
+const spBoard = new SymBoard($("spBoard"), { onChange: (st, res) => spChange(res) });
+function spLoad(lv, next = true) {
+  SP.lv = lv;
+  const L = SYM.levels[lv];
+  if (next || SP.i < 0) { let i; do { i = Math.floor(Math.random() * L.puzzles.length); } while (L.puzzles.length > 1 && i === SP.i); SP.i = i; }
+  SP.pz = L.puzzles[SP.i];
+  spBoard.load(SP.pz, initialState(SP.pz));
+  $("spLevels").innerHTML = SYM.levels.map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-splv="${i}">${x.tut ? "🐣 " : ""}${x.name}</button>`).join("");
+  $("spMsg").textContent = "조각을 끌어서 옮기고, 톡 누르면 돌아가. 선대칭 모양을 만들어 봐!";
+  $("spMsg").className = "bubble";
+}
+function spChange(res) {
+  if (res && res.ok) { $("spMsg").textContent = "완성! 🦋 점선이 대칭축이야. 다른 문제도 풀어 볼까?"; $("spMsg").className = "bubble ok"; spBoard.setLocked(true); confetti(); return; }
+  $("spMsg").textContent = (res && SYM_WHY[res.why]) || "조각을 끌어서 옮기고, 톡 누르면 돌아가.";
+  $("spMsg").className = "bubble";
+}
+$("symPracBtn").addEventListener("click", () => { $("symPractice").classList.remove("hidden"); spLoad(SP.lv, SP.i < 0); });
+$("spClose").addEventListener("click", () => $("symPractice").classList.add("hidden"));
+$("spNext").addEventListener("click", () => spLoad(SP.lv));
+$("spReset").addEventListener("click", () => spLoad(SP.lv, false));
+$("spAnswer").addEventListener("click", () => { spBoard.load(SP.pz, answerState(SP.pz), { locked: true }); $("spMsg").textContent = "이렇게 하면 돼! (다른 모양도 대칭이면 정답이야)"; $("spMsg").className = "bubble"; });
+$("spLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-splv]"); if (b) spLoad(Number(b.dataset.splv)); });
 
 // =====================================================================
 // 큐브 세기 혼자 연습하기 (점수 없음, 바로 정답 확인)
@@ -1176,6 +1317,8 @@ $("wpLevels").addEventListener("click", (e) => {
   const b = e.target.closest("[data-wplv]"), c = e.target.closest("[data-wpn]");
   if (b) { WP.level = b.dataset.wplv; wpNew(); }
   if (c) { WP.n = Number(c.dataset.wpn); wpNew(); }
+  const v = e.target.closest("[data-wpv]");
+  if (v) { WP.v = Number(v.dataset.wpv); wpNew(); }
 });
 $("prCheck").addEventListener("click", () => {
   const L = PUZZLES[PR.lv];
@@ -1189,7 +1332,7 @@ $("prCheck").addEventListener("click", () => {
 // =====================================================================
 // 교사
 // =====================================================================
-const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, game: null, boardKey: null, answer: false, tick: null, autoTry: new Map() };
+const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, ssel: null, game: null, boardKey: null, answer: false, tick: null, autoTry: new Map() };
 const tBoard = new Board($("tBoard"));
 
 // 관리자: 이름 없이 관리자 비밀번호 / 선생님: 등록한 이름 + 비밀번호 (관리자 승인 필요)
@@ -1258,7 +1401,7 @@ async function startTeacher(code) {
   $("tWho").textContent = T.role === "admin" ? "👑 관리자" : `🧑‍🏫 ${T.tname} 선생님`;
   $("tAdminBtn").classList.toggle("hidden", T.role !== "admin");
   const roomRef = doc(db, "rooms", code);
-  Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, game: null, boardKey: null, answer: false, autoTry: new Map() });
+  Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, ssel: null, game: null, boardKey: null, answer: false, autoTry: new Map() });
   $("tCode").textContent = code;
   hideExplain();
   showScreen("teacher");
@@ -1270,6 +1413,7 @@ async function startTeacher(code) {
     $("tMemo").classList.toggle("hidden", !T.room.memo);
     if (T.sel === null || T.sel > PUZZLES.length) T.sel = Math.min(T.room.level || 1, PUZZLES.length);
     if (T.game === null) T.game = GAMES[T.room.game] ? T.room.game : "fence";
+    if (T.ssel === null || T.ssel > SYM.levels.length) T.ssel = Math.min((T.room.game === "sym" && T.room.level) || 1, SYM.levels.length);
     if (T.csel === null || T.csel > CUBES.length) T.csel = Math.min((T.room.cube && T.room.cube.lv) || 1, CUBES.length);
     renderTeacher(); gradePending(); gradeMatches();
   }));
@@ -1295,6 +1439,7 @@ async function startTeacher(code) {
 const pRefOf = (id) => doc(db, "rooms", T.code, "players", id);
 const mRefOf = (id) => doc(db, "rooms", T.code, "matches", id);
 const times = () => { const t = T.room && T.room.times; return Array.isArray(t) && t.length === PUZZLES.length ? t : DEFAULT_TIMES; };
+const stimes = () => { const t = T.room && T.room.stimes; return Array.isArray(t) && t.length === SYM.levels.length ? t : DEFAULT_STIMES; };   // 0 = 제한 시간 없음
 const ctimes = () => { const t = T.room && T.room.ctimes; return Array.isArray(t) && t.length === CUBES.length ? t : DEFAULT_CTIMES; };   // 0 = 제한 시간 없음
 const pts = () => {
   const p = (T.room && T.room.pts) || {};
@@ -1307,7 +1452,7 @@ const roundMatches = () => (T.room ? T.matches.filter((m) => m.round === T.room.
 function playerState(p, r) {
   if (!r || r.round < 1) return { cls: "", txt: "대기 중" };
   const res = p.result && p.result.round === r.round ? p.result : (T.graded.get(r.round + "|" + p.id) || null);
-  if (r.game === "wallgo") {
+  if (isWG(r.game)) {
     if (res && res !== "pending") {
       const o = res.outcome;
       const lbl = res.n > 2 ? { win: "🏆 1등", draw: `🥈 ${res.rank}등`, lose: `😢 ${res.rank}등` }[o] : { win: "🏆 승리", draw: "🤝 무승부", lose: "😢 패배", bye: "🍀 부전승" }[o];
@@ -1347,8 +1492,22 @@ function renderTeacher() {
     `<button class="game-tab ${id === game ? "active" : ""}" data-game="${id}" ${playing ? "disabled" : ""}><span>${g.icon}</span>${g.name}</button>`).join("");
   $("gameDesc").textContent = GAMES[game].desc;
   $("fencePanel").classList.toggle("hidden", game !== "fence");
-  $("wgPanel").classList.toggle("hidden", game !== "wallgo");
+  $("wgPanel").classList.toggle("hidden", !isWG(game));
   $("cubePanel").classList.toggle("hidden", game !== "cube");
+  $("symPanel").classList.toggle("hidden", game !== "sym");
+  $("symLevelBtns").innerHTML = SYM.levels.map((L, i) => {
+    const lv = i + 1, t = stimes()[i];
+    return `<button class="level-btn ${L.tut ? "tut" : ""} ${lv === T.ssel ? "active" : ""}" data-slv="${lv}" ${playing ? "disabled" : ""}>
+      <b>${L.tut ? "🐣 " : ""}${L.name}</b>조각 ${L.k}개 · ${L.size}<br><small>${t > 0 ? fmtTime(t) : "시간 제한 없음"}${pts().mult ? ` · ×${SYM_MULT[i]}` : ""}</small></button>`;
+  }).join("");
+  const stt = stimes()[T.ssel - 1];
+  $("stimeLabel").textContent = stt > 0 ? fmtTime(stt) : "제한 없음";
+  $("stimeLabel").classList.toggle("free", !(stt > 0));
+  $("stimeFree").textContent = stt > 0 ? "♾️ 제한 없음" : "⏱ 시간 정하기";
+  $("stimeFree").classList.toggle("on", !(stt > 0));
+  $("stimeNote").classList.toggle("hidden", stt > 0);
+  ["stimePlus", "stimeFree"].forEach((id) => ($(id).disabled = playing));
+  $("stimeMinus").disabled = playing || !(stt > 0);
   $("cubeLevelBtns").innerHTML = CUBES.map((L, i) => {
     const lv = i + 1;
     return `<button class="level-btn ${L.tut ? "tut" : ""} ${lv === T.csel ? "active" : ""}" data-clv="${lv}" ${playing ? "disabled" : ""}>
@@ -1396,7 +1555,16 @@ function renderTeacher() {
   // 울타리치기 문제판 / 벽바둑 대결 현황
   const showPuzzle = r.round > 0 && r.game === "fence" && r.puzzle;
   const showCube = r.round > 0 && r.game === "cube" && r.cube;
-  $("tPuzzleCard").classList.toggle("hidden", !showPuzzle && !showCube);
+  const showSym = r.round > 0 && r.game === "sym" && r.sym;
+  $("tPuzzleCard").classList.toggle("hidden", !showPuzzle && !showCube && !showSym);
+  $("tSym").style.display = showSym ? "" : "none";
+  if (showSym) {
+    $("tRoundInfo").textContent = `${r.round}라운드 · 대칭 퍼즐 · ${symLabel(r.level)}${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
+    const k = r.round + ":" + T.answer;
+    if (T.symKey !== k) { T.symKey = k; tSymBoard.load(r.sym, T.answer ? answerState(r.sym) : initialState(r.sym), { locked: true }); }
+    $("answerBtn").classList.toggle("hidden", r.status !== "ended");
+    $("answerBtn").textContent = T.answer ? "🙈 정답 예시 숨기기" : "✅ 정답 예시 보기";
+  }
   $("tBoard").style.display = showPuzzle ? "" : "none";
   $("tCubes").classList.toggle("hidden", !showCube);
   if (showCube) {
@@ -1452,19 +1620,19 @@ function renderTeacher() {
     return `<li class="${p.rank <= 3 ? "top" + p.rank : ""}"><span class="no">${medal(p.rank)}</span><span class="pc-av">${avHTML(p)}</span><span class="nm">${esc(p.name)}<small>🪽 ${w.name}</small></span><span class="sc">${p.score || 0}</span></li>`;
   }).join("") || `<li>아직 학생이 없어요.</li>`;
   $("tSummary").textContent = r.round > 0
-    ? (r.game === "wallgo" ? `대결 ${roundMatches().filter((m) => m.phase === "done").length} / ${roundMatches().length} 끝`
+    ? (isWG(r.game) ? `대결 ${roundMatches().filter((m) => m.phase === "done").length} / ${roundMatches().length} 끝`
       : `정답 ${nOk} · 틀림/시간 초과 ${nBad} · 채점 중 ${nWait} · 푸는 중 ${nSolve}`) : "";
   if (!$("rankOverlay").classList.contains("hidden")) renderBigRank();
 }
 
 function renderMatches() {
   const r = T.room;
-  const show = r && r.round > 0 && r.game === "wallgo";
+  const show = r && r.round > 0 && isWG(r.game);
   $("tMatchesWrap").classList.toggle("hidden", !show);
   if (!show) return;
   const ms_ = roundMatches().sort((a, b) => Number(a.id.split("-")[1]) - Number(b.id.split("-")[1]));
   const byes = T.players.filter((p) => p.mt && p.mt.round === r.round && p.mt.bye);
-  $("tMatchInfo").textContent = `${r.round}라운드 · 벽바둑 1 · 한 수 ${r.turnSec || DEFAULT_TURN}초${r.status === "ended" ? " · 끝" : ""}`;
+  $("tMatchInfo").textContent = `${r.round}라운드 · ${GAMES[r.game].name} · 한 수 ${r.turnSec || DEFAULT_TURN}초${r.status === "ended" ? " · 끝" : ""}`;
   $("tMatches").innerHTML = ms_.map((m, i) => {
     let st, cls = "";
     const sides = WG.sidesOf(m), done = m.phase === "done";
@@ -1503,7 +1671,7 @@ function renderBigRank() {
 function teacherTick() {
   const r = T.room;
   if (!r || r.status !== "playing") return;
-  if (r.game === "wallgo") {
+  if (isWG(r.game)) {
     $("tTimer").textContent = "";
     // 두 기기가 다 멈춘 대결은 교사 화면이 대신 둠
     for (const m of roundMatches()) {
@@ -1540,7 +1708,7 @@ function teacherTick() {
 // ----- 울타리치기 채점 -----
 function gradePending() {
   const r = T.room;
-  if (!r || r.status !== "playing" || (r.game !== "fence" && r.game !== "cube")) return;
+  if (!r || r.status !== "playing" || !["fence", "cube", "sym"].includes(r.game)) return;
   const round = r.round;
   const pend = T.players
     .filter((p) => p.sub && p.sub.round === round && ms(p.sub.at) && !(p.result && p.result.round === round) && !T.graded.has(round + "|" + p.id))
@@ -1577,6 +1745,17 @@ async function gradeOne(p, round) {
     await updateDoc(pRefOf(p.id), { result, score: increment(result.points), total: increment(result.points) });
     return;
   }
+  if (r.game === "sym") {
+    const end = endAtOf(r);
+    const late = end !== null && ms(p.sub.at) > end + GRACE_MS;
+    const ok = !late && checkSym(r.sym, decodeState(p.sub.edges, r.sym.p.length)).ok;
+    let rank = 0, points = 0;
+    if (ok) { rank = correctCount(round) + 1; points = calcPoints(pts(), rank, r.level, "sym"); }
+    const result = { round, game: "sym", correct: ok, rank, points, reason: ok ? "ok" : late ? "late" : "wrong" };
+    T.graded.set(round + "|" + p.id, result);
+    await updateDoc(pRefOf(p.id), { result, score: increment(points), total: increment(points) });
+    return;
+  }
   const end = endAtOf(r);
   const late = end !== null && ms(p.sub.at) > end + GRACE_MS;
   const ok = !late && checkSolution(r.puzzle.w, r.puzzle.h, r.puzzle.c, decodeEdges(p.sub.edges));
@@ -1599,7 +1778,7 @@ function wgResult(m, side, round) {
 }
 function gradeMatches() {
   const r = T.room;
-  if (!r || r.status !== "playing" || r.game !== "wallgo") return;
+  if (!r || r.status !== "playing" || !isWG(r.game)) return;
   const round = r.round;
   for (const m of roundMatches()) {
     if (m.phase !== "done") continue;
@@ -1622,7 +1801,7 @@ async function endRound() {
   try {
     const round = r.round;
     const batch = writeBatch(db);
-    if (r.game === "wallgo") {
+    if (isWG(r.game)) {
       gradeMatches();
       await T.queue;
       for (const m of roundMatches()) {
@@ -1648,7 +1827,7 @@ async function endRound() {
           const result = cubeResult(r, cubeMyAnswers(p, round), round, true);
           T.graded.set(round + "|" + p.id, result);
           batch.update(pRefOf(p.id), { result, score: increment(result.points), total: increment(result.points) });
-        } else batch.update(pRefOf(p.id), { result: { round, game: "fence", correct: false, rank: 0, points: 0, reason: "timeout" } });
+        } else batch.update(pRefOf(p.id), { result: { round, game: r.game, correct: false, rank: 0, points: 0, reason: "timeout" } });
       });
     }
     batch.update(T.roomRef, { status: "ended", endedAt: serverTimestamp() });
@@ -1674,6 +1853,20 @@ async function startFence() {
   });
 }
 
+async function startSym() {
+  const r = T.room;
+  const lv = T.ssel, L = SYM.levels[lv - 1];
+  const used = (r.used && r.used["S" + lv]) || [];
+  let cand = L.puzzles.map((_, i) => i).filter((i) => !used.includes(i));
+  const reset = !cand.length;
+  if (reset) cand = L.puzzles.map((_, i) => i);
+  const pick = cand[Math.floor(Math.random() * cand.length)];
+  await updateDoc(T.roomRef, {
+    status: "playing", game: "sym", round: (r.round || 0) + 1, level: lv, sym: L.puzzles[pick],
+    startAt: serverTimestamp(), duration: stimes()[lv - 1], explain: deleteField(),
+    [`used.S${lv}`]: reset ? [pick] : arrayUnion(pick)
+  });
+}
 async function startCube() {
   const r = T.room;
   const lv = T.csel, L = CUBES[lv - 1];
@@ -1712,14 +1905,14 @@ async function startWallgo() {
   const round = (r.round || 0) + 1, sec = turnSec(), size = wgSize();
   const batch = writeBatch(db);
   makeGroups(list, size).forEach((grp, gi) => {
-    const id = `${round}-${gi + 1}`, m = WG.newMatch(grp.length, { round, turnSec: sec });
+    const id = `${round}-${gi + 1}`, m = newWG(T.game, grp.length, { round, turnSec: sec });
     m.sides.forEach((sd, k) => {
       m[sd] = grp[k].id;
       batch.update(pRefOf(grp[k].id), { mt: { round, id, side: sd } });
     });
     batch.set(mRefOf(id), m);
   });
-  batch.update(T.roomRef, { status: "playing", game: "wallgo", round, startAt: serverTimestamp(), turnSec: sec, wgSize: size, explain: deleteField() });
+  batch.update(T.roomRef, { status: "playing", game: T.game, round, startAt: serverTimestamp(), turnSec: sec, wgSize: size, explain: deleteField() });
   await batch.commit();
 }
 
@@ -1727,7 +1920,7 @@ async function startRound() {
   const r = T.room;
   if (!r || r.status === "playing") return;
   $("startBtn").disabled = true;
-  try { if (T.game === "wallgo") await startWallgo(); else if (T.game === "cube") await startCube(); else await startFence(); }
+  try { if (isWG(T.game)) await startWallgo(); else if (T.game === "cube") await startCube(); else if (T.game === "sym") await startSym(); else await startFence(); }
   catch (e) { console.error(e); toast("시작하지 못했어요. 다시 눌러 주세요."); }
   finally { $("startBtn").disabled = false; }
 }
@@ -1764,6 +1957,20 @@ function changeCTime(d) {
 $("ctimeMinus").addEventListener("click", () => changeCTime(-10));
 $("ctimePlus").addEventListener("click", () => changeCTime(10));
 $("ctimeFree").addEventListener("click", () => changeCTime("free"));
+$("symLevelBtns").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-slv]");
+  if (!b || b.disabled) return;
+  T.ssel = Number(b.dataset.slv); renderTeacher();
+});
+function changeSTime(d) {
+  const arr = [...stimes()], i = T.ssel - 1, cur = arr[i];
+  arr[i] = d === "free" ? (cur > 0 ? 0 : DEFAULT_STIMES[i]) : !(cur > 0) ? DEFAULT_STIMES[i] : Math.min(900, Math.max(20, cur + d));
+  updateDoc(T.roomRef, { stimes: arr }).catch(() => toast("시간을 바꾸지 못했어요."));
+}
+$("stimeMinus").addEventListener("click", () => changeSTime(-30));
+$("stimePlus").addEventListener("click", () => changeSTime(30));
+$("stimeFree").addEventListener("click", () => changeSTime("free"));
+const tSymBoard = new SymBoard($("tSym"));
 $("timePlus").addEventListener("click", () => changeTime(30));
 function changeTurn(d) {
   updateDoc(T.roomRef, { turnSec: Math.min(120, Math.max(10, turnSec() + d)) }).catch(() => toast("시간을 바꾸지 못했어요."));
@@ -1799,7 +2006,7 @@ $("exNext").addEventListener("click", () => (EXM.mode === "local" ? exLocal(1) :
 $("exEnd").addEventListener("click", () => (EXM.mode === "local" ? hideExplain() : exStop()));
 document.querySelectorAll("[data-how]").forEach((b) => b.addEventListener("click", () => openHowTo(b.dataset.how)));
 $("endBtn").addEventListener("click", async () => {
-  const msg = T.room && T.room.game === "wallgo"
+  const msg = T.room && isWG(T.room.game)
     ? "지금 라운드를 끝낼까요?\n아직 끝나지 않은 대결은 지금까지 만든 땅 넓이로 승부를 정해요."
     : T.room && T.room.game === "cube"
       ? "지금 라운드를 끝낼까요?\n다 풀지 못한 학생은 지금까지 푼 문제만 채점해요."
@@ -1808,7 +2015,7 @@ $("endBtn").addEventListener("click", async () => {
 });
 $("answerBtn").addEventListener("click", () => {
   const r = T.room;
-  if (r && r.game === "cube") { T.answer = !T.answer; renderTeacher(); return; }
+  if (r && (r.game === "cube" || r.game === "sym")) { T.answer = !T.answer; renderTeacher(); return; }
   if (!r || !r.puzzle) return;
   const ans = answerOf(r);
   if (!ans) return toast("이 라운드의 정답을 찾을 수 없어요.");

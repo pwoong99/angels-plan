@@ -553,3 +553,19 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 #ctimeLabel.free { font-size: 1.3rem; }
 #ctimeFree { flex-basis: 100%; margin-top: 4px; }
 #tTimer.free, .timer.free { white-space: nowrap; font-size: 1.3rem; }
+
+/* ===== 대칭 퍼즐 ===== */
+.sym-wrap { width: min(640px, 94vw); background: #fff; border: 3px solid var(--line); border-radius: 24px; padding: 8px; }
+.sym-board { display: block; width: 100%; height: auto; aspect-ratio: 592 / 448; user-select: none; -webkit-user-select: none; }
+.sym-board.small { width: 100%; max-width: 420px; margin: 6px auto; }
+.sym-board.ex { width: min(440px, 60vw); }
+.sym-bg { fill: #f7f9ff; stroke: #dfe6f5; stroke-width: 2; }
+.sym-grid line { stroke: #e3e9f6; stroke-width: 1.2; }
+.sym-piece { cursor: grab; }
+.sym-piece.locked { cursor: default; }
+.sym-piece.dragging { cursor: grabbing; filter: drop-shadow(0 6px 6px rgba(41, 48, 77, .25)); }
+.sym-cell { stroke: rgba(255, 255, 255, .7); stroke-width: 2; }
+.sym-edge { fill: none; stroke-width: 4; stroke-linecap: round; }
+.sym-axis { stroke: #ff7aa2; stroke-width: 4; stroke-dasharray: 10 8; stroke-linecap: round; }
+.sym-tip { margin: 0; color: var(--muted); font-weight: 700; text-align: center; }
+#symPractice .practice-card { align-items: center; }

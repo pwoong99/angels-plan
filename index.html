@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v2.2">
+<link rel="stylesheet" href="style.css?v=v2.3">
 </head>
 <body>
 
@@ -153,6 +153,7 @@
         <button class="btn sun big-ish" id="practiceBtn">🧩 울타리치기 연습</button>
         <button class="btn sun big-ish" id="wgPracBtn">🧱 벽바둑 AI와 연습</button>
         <button class="btn sun big-ish" id="cubePracBtn">🧊 큐브 세기 연습</button>
+        <button class="btn sun big-ish" id="symPracBtn">🦋 대칭 퍼즐 연습</button>
       </div>
     </div>
     <div class="lobby-grid">
@@ -172,6 +173,7 @@
         <h3 id="stAnswerTitle">✅ 이번 문제 정답</h3>
         <svg id="stAnswerBoard" class="board small"></svg>
         <div id="stCubeAns"></div>
+        <svg id="stSymAns" class="sym-board small" style="display:none"></svg>
       </div>
       <div class="card">
         <h3>🏆 우리 반 순위</h3>
@@ -187,7 +189,9 @@
         <div class="how-btns">
           <button class="btn ghost how-btn" data-how="fence">🧩 울타리치기 방법</button>
           <button class="btn ghost how-btn" data-how="wallgo">🧱 벽바둑 1 방법</button>
+          <button class="btn ghost how-btn" data-how="wallgo2">🔷 벽바둑 2 방법</button>
           <button class="btn ghost how-btn" data-how="cube">🧊 큐브 세기 방법</button>
+          <button class="btn ghost how-btn" data-how="sym">🦋 대칭 퍼즐 방법</button>
         </div>
       </div>
     </div>
@@ -207,6 +211,16 @@
       <button class="btn primary submit" id="toolSubmit">📮 제출하기</button>
     </div>
     <p id="stGameMsg" class="game-msg"></p>
+   </div>
+   <div id="symArea" class="game-area hidden">
+    <div class="game-top">
+      <span class="chip level" id="syLevel"></span>
+      <span class="timer" id="syTimer">0:00</span>
+    </div>
+    <p class="sym-tip">조각을 <b>끌면</b> 옮겨지고, <b>톡 누르면</b> 돌아가요. 선대칭 모양이 되면 저절로 제출돼요!</p>
+    <div class="sym-wrap"><svg id="syBoard" class="sym-board"></svg></div>
+    <div class="tools"><button class="btn ghost" id="syReset">↩ 처음 자리로</button></div>
+    <p id="syMsg" class="game-msg"></p>
    </div>
    <div id="cubeArea" class="game-area hidden">
     <div class="game-top">
@@ -230,6 +244,24 @@
    </div>
   </div>
 </section>
+
+<!-- ===== 대칭 퍼즐 연습 ===== -->
+<div id="symPractice" class="overlay hidden">
+  <div class="practice-card">
+    <div class="pr-head">
+      <h2>🦋 대칭 퍼즐 연습</h2>
+      <button class="btn ghost small" id="spClose">닫기 ✕</button>
+    </div>
+    <div class="pr-levels" id="spLevels"></div>
+    <div class="pr-coach"><img class="porong mini" src="img/porong-oh.jpg" alt="포롱이"><div class="bubble" id="spMsg"></div></div>
+    <div class="sym-wrap"><svg id="spBoard" class="sym-board"></svg></div>
+    <div class="tools">
+      <button class="btn ghost" id="spReset">↩ 처음 자리로</button>
+      <button class="btn ghost" id="spAnswer">💡 정답 보기</button>
+      <button class="btn sun" id="spNext">🔄 다른 문제</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== 큐브 세기 연습 ===== -->
 <div id="cubePractice" class="overlay hidden">
@@ -325,6 +357,18 @@
             <small>(30초씩)</small>
           </div>
         </div>
+        <div id="symPanel" class="hidden">
+          <div id="symLevelBtns" class="level-btns"></div>
+          <div class="time-row">
+            <span>⏱ 제한 시간</span>
+            <button class="btn round" id="stimeMinus">−</button>
+            <b id="stimeLabel">1:00</b>
+            <button class="btn round" id="stimePlus">＋</button>
+            <button class="btn ghost small free-btn" id="stimeFree">♾️ 제한 없음</button>
+          </div>
+          <p class="hint free-note hidden" id="stimeNote">♾️ 시간 제한이 없어요. 모두 완성하면 자동으로 끝나요. 오래 걸리면 [라운드 끝내기]를 누르세요. 완성한 학생만 점수를 받아요(먼저 완성한 순서대로 등수).</p>
+          <p class="hint">스타트를 누르면 고른 단계에서 아직 안 나온 문제 하나가 모두에게 똑같이 나가요. 선대칭이 되는 순간 저절로 제출되고, 먼저 완성한 순서대로 등수가 정해져요. 대칭축 방향이나 모양이 정답 예시와 달라도 선대칭이면 정답이에요.</p>
+        </div>
         <div id="cubePanel" class="hidden">
           <div id="cubeLevelBtns" class="level-btns"></div>
           <div class="time-row">
@@ -366,6 +410,7 @@
         </div>
         <div class="board-wrap"><svg id="tBoard" class="board"></svg></div>
         <div id="tCubes" class="t-cubes hidden"></div>
+        <svg id="tSym" class="sym-board small" style="display:none"></svg>
         <button class="btn ghost hidden" id="answerBtn">✅ 정답 보기</button>
       </div>
     </div>
@@ -407,6 +452,7 @@
           <svg id="exFence" class="board ex-board"></svg>
           <svg id="exWall" class="board ex-board wg"></svg>
           <div id="exCube" class="ex-cube" style="display:none"></div>
+          <svg id="exSym" class="sym-board ex" style="display:none"></svg>
           <div id="exExtra" class="ex-extra"></div>
         </div>
       </div>
@@ -529,6 +575,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v2.2"></script>
+<script type="module" src="app.js?v=v2.3"></script>
 </body>
 </html>

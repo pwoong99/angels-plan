@@ -29,6 +29,31 @@ export function newMatch(n = 2, extra = {}) {
   return { sides, phase: "place", turn: placeOrder({ sides })[0], placeNo: 0, moveNo: 0, stones, walls: emptyWalls(), ...extra };
 }
 
+// 벽바둑 2: 말이 두 종류. 네모(s) = 한 방향으로 곧게 1~3칸(꺾기 X) / 동그라미(r) = 1~2칸, 꺾어도 됨
+// 2명: 네모 2 + 동그라미 2 (정해진 자리에 하나씩, 직접 놓는 것도 하나씩) / 3~4명: 네모 1(정해진 자리) + 동그라미 1(직접 놓기)
+export const KIND_NAMES = { s: "네모", r: "동그라미" };
+export function newMatch2(n = 2, extra = {}) {
+  const m = newMatch(n, extra);
+  m.v = 2;
+  m.kinds = {};
+  m.sides.forEach((sd) => (m.kinds[sd] = m.sides.length === 2 ? ["s", "r", "s", "r"] : ["s", "r"]));
+  return m;
+}
+export function kindOf(state, cell) {
+  if (!state || state.v !== 2 || !state.kinds) return "r";
+  for (const sd of Object.keys(state.stones || {})) {
+    const i = (state.stones[sd] || []).indexOf(cell);
+    if (i >= 0) return (state.kinds[sd] || [])[i] || "r";
+  }
+  return "r";
+}
+// 지금 놓을 말의 종류 (놓기 단계)
+export function nextPlaceKind(state, side) {
+  if (!state || state.v !== 2) return "r";
+  const i = (state.stones[side] || []).indexOf(-1);
+  return i >= 0 ? ((state.kinds[side] || [])[i] || "r") : "r";
+}
+
 // 칸 사이 벽 번호 (붙어 있지 않으면 -1)
 export function wallBetween(c1, c2) {
   const r1 = Math.floor(c1 / N), k1 = c1 % N, r2 = Math.floor(c2 / N), k2 = c2 % N;
@@ -61,10 +86,24 @@ export function occupied(stones) {
 export function freeWallsAround(cell, walls) {
   return adj(cell).map((n) => wallBetween(cell, n)).filter((w) => walls[w] === "0");
 }
-// 0~2칸 안에 갈 수 있는 칸 (벽 세울 곳이 있는 칸만)
+// 0~2칸 안에 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~3칸
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 export function reachable(state, from) {
   const occ = occupied(state.stones);
   const res = new Set([from]);
+  if (kindOf(state, from) === "s") {
+    for (const [dr, dc] of DIRS) {
+      let cur = from;
+      for (let k = 0; k < 3; k++) {
+        const r = Math.floor(cur / N) + dr, c = (cur % N) + dc;
+        if (r < 0 || r >= N || c < 0 || c >= N) break;
+        const nx = r * N + c;
+        if (blocked(state.walls, cur, nx) || occ.has(nx)) break;
+        res.add(nx); cur = nx;
+      }
+    }
+    return [...res].filter((c) => freeWallsAround(c, state.walls).length > 0);
+  }
   let frontier = [from];
   for (let step = 0; step < 2; step++) {
     const next = [];
@@ -343,9 +382,15 @@ export class WallBoard {
       const [x, y] = this.xy(shown), cx = x + S / 2, cy = y + S / 2;
       const g = add("g", { class: `wg-stone side-${s}${s === this.me ? " mine" : ""}${c === this.sel ? " sel" : ""}`, "data-stone": c }, stones);
       g.style.pointerEvents = "none";
-      if (c === this.sel) add("circle", { cx, cy, r: 24.5, class: "wg-sel-ring" }, g);
-      add("circle", { cx, cy, r: 19, fill: u("s" + s), class: "wg-ball" }, g);
-      add("ellipse", { cx: cx - 6, cy: cy - 7.5, rx: 7, ry: 4.5, class: "wg-shine", transform: `rotate(-25 ${cx - 6} ${cy - 7.5})` }, g);
+      const sq = kindOf(m, c) === "s";
+      if (c === this.sel) add(sq ? "rect" : "circle", sq ? { x: cx - 24, y: cy - 24, width: 48, height: 48, rx: 12, class: "wg-sel-ring" } : { cx, cy, r: 24.5, class: "wg-sel-ring" }, g);
+      if (sq) {
+        add("rect", { x: cx - 18, y: cy - 18, width: 36, height: 36, rx: 8, fill: u("s" + s), class: "wg-ball wg-square" }, g);
+        add("rect", { x: cx - 13, y: cy - 13, width: 13, height: 7, rx: 3.5, class: "wg-shine" }, g);
+      } else {
+        add("circle", { cx, cy, r: 19, fill: u("s" + s), class: "wg-ball" }, g);
+        add("ellipse", { cx: cx - 6, cy: cy - 7.5, rx: 7, ry: 4.5, class: "wg-shine", transform: `rotate(-25 ${cx - 6} ${cy - 7.5})` }, g);
+      }
       if (s === this.me) add("circle", { cx: cx + 10.5, cy: cy + 10.5, r: 4.2, class: "wg-me-dot" }, g);
     });
   }
