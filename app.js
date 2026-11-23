@@ -6,12 +6,12 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.6";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.6";
-import * as WG from "./wallgo.js?v=v1.6";
-import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.6";
+import { PUZZLES } from "./puzzles.js?v=v1.7";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.7";
+import * as WG from "./wallgo.js?v=v1.7";
+import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.7";
 
-const VERSION = "v1.6";
+const VERSION = "v1.7";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -279,16 +279,31 @@ const EXPLAIN = {
 };
 let exKey = null;
 Object.values(GUIDE_IMG).flat().forEach((n) => { const im = new Image(); im.src = `img/${n}.jpg`; });
+// 설명 화면 모드: room(선생님이 넘김, 학생은 보기만) / teacher(선생님 조작) / local(학생이 혼자 넘겨 봄)
+const EXM = { mode: null, game: null, step: 0 };
 function showExplain(r, teacher) {
-  const ex = r && r.explain, steps = ex && EXPLAIN[ex.game];
-  if (!steps) { hideExplain(); return; }
-  const step = Math.max(0, Math.min(steps.length - 1, ex.step || 0)), S = steps[step];
+  const ex = r && r.explain;
+  if (!ex || !EXPLAIN[ex.game]) { hideExplain(); return; }
+  EXM.mode = teacher ? "teacher" : "room";
+  drawExplain(ex.game, ex.step || 0, r);
+}
+function openHowTo(game) {
+  Object.assign(EXM, { mode: "local", game, step: 0 });
+  drawExplain(game, 0, ST.room);
+}
+function drawExplain(game, stepIn, r) {
+  const steps = EXPLAIN[game], local = EXM.mode === "local", ctrl = EXM.mode !== "room";
+  const step = Math.max(0, Math.min(steps.length - 1, stepIn)), S = steps[step];
   $("explainView").classList.remove("hidden");
-  $("exCtrl").classList.toggle("hidden", !teacher);
-  $("exWait").classList.toggle("hidden", teacher);
+  $("exCtrl").classList.toggle("hidden", !ctrl);
+  $("exWait").classList.toggle("hidden", ctrl);
   $("exPrev").disabled = step === 0;
-  $("exNext").textContent = step === steps.length - 1 ? "설명 다 했어요" : "다음";
-  const key = ex.game + ":" + step + ":" + (teacher ? "t" : "s");
+  $("exNext").textContent = step === steps.length - 1 ? (local ? "다 봤어요" : "설명 다 했어요") : "다음";
+  $("exEnd").textContent = local ? "닫기" : "설명 끝내기";
+  $("exEnd").classList.toggle("danger", !local);
+  $("exEnd").classList.toggle("ghost", local);
+  const ex = { game, step };
+  const key = game + ":" + step + ":" + EXM.mode;
   if (key === exKey) return;
   exKey = key;
   $("exGame").textContent = `${GAMES[ex.game].icon} ${GAMES[ex.game].name} 게임 설명`;
@@ -301,7 +316,7 @@ function showExplain(r, teacher) {
   const extra = S.show(r) || "";
   $("exExtra").innerHTML = extra;
 }
-function hideExplain() { $("explainView").classList.add("hidden"); exKey = null; }
+function hideExplain() { $("explainView").classList.add("hidden"); exKey = null; EXM.mode = null; }
 
 // ---------- 엔젤스 플랜 소개 (포롱이) ----------
 const INTRO = [
@@ -582,7 +597,9 @@ function renderStudent() {
   if (!r || !me) return;
   $("stScore").textContent = me.score || 0;
   renderMyAngel();
-  if (r.explain && r.status !== "playing") showExplain(r, false); else hideExplain();
+  if (r.explain && r.status !== "playing") showExplain(r, false);
+  else if (EXM.mode === "local" && r.status !== "playing") { /* 학생이 혼자 보는 중 */ }
+  else hideExplain();
   if (!me.av && !AV.asked && r.status !== "playing") { AV.asked = true; openAvatar(true); }
   const tc = GAMES[r.game] && GAMES[r.game].team ? r.teamCount || 0 : 0, tm = teamOf(me, tc);
   $("stTeam").textContent = teamLabel(tm);
@@ -710,6 +727,7 @@ function renderMyAngel() {
   const me = ST.me;
   if (!me) return;
   const info = wingInfo(me.score || 0);
+  $("stAngelTitle").textContent = `😇 ${me.name || ST.name}의 천사`;
   const key = JSON.stringify(avOf(me)) + ":" + info.lv;
   if (key !== myAngelKey) {
     myAngelKey = key;
@@ -1472,9 +1490,16 @@ function exGo(d) {
   updateDoc(T.roomRef, { "explain.step": Math.max(0, step) }).catch(() => toast("넘기지 못했어요."));
 }
 function exStop() { updateDoc(T.roomRef, { explain: deleteField() }).catch(() => toast("설명을 끝내지 못했어요.")); }
-$("exPrev").addEventListener("click", () => exGo(-1));
-$("exNext").addEventListener("click", () => exGo(1));
-$("exEnd").addEventListener("click", exStop);
+function exLocal(d) {
+  const n = EXPLAIN[EXM.game].length, step = EXM.step + d;
+  if (step >= n) return hideExplain();
+  EXM.step = Math.max(0, step);
+  drawExplain(EXM.game, EXM.step, ST.room);
+}
+$("exPrev").addEventListener("click", () => (EXM.mode === "local" ? exLocal(-1) : exGo(-1)));
+$("exNext").addEventListener("click", () => (EXM.mode === "local" ? exLocal(1) : exGo(1)));
+$("exEnd").addEventListener("click", () => (EXM.mode === "local" ? hideExplain() : exStop()));
+document.querySelectorAll("[data-how]").forEach((b) => b.addEventListener("click", () => openHowTo(b.dataset.how)));
 $("endBtn").addEventListener("click", async () => {
   const msg = T.room && T.room.game === "wallgo"
     ? "지금 라운드를 끝낼까요?\n아직 끝나지 않은 대결은 지금까지 만든 땅 넓이로 승부를 정해요."

@@ -461,6 +461,9 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .pr-coach .porong { width: 74px; }
 .upd-bar { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); z-index: 50; background: #fff; border: 3px solid var(--blue); border-radius: 18px; padding: 8px 10px 8px 16px; display: flex; gap: 12px; align-items: center; font-weight: 800; box-shadow: 0 8px 24px rgba(91,141,239,.25); max-width: 94vw; }
 
+.how-btns { display: flex; flex-direction: column; gap: 8px; }
+.how-btn { font-family: "Jua"; font-weight: 400; font-size: 1.12rem; text-align: left; }
+
 /* 축하 꽃가루 */
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
 #confetti i { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 3px; animation: fall linear forwards; }

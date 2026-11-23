@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v1.6">
+<link rel="stylesheet" href="style.css?v=v1.7">
 </head>
 <body>
 
@@ -156,7 +156,7 @@
     </div>
     <div class="lobby-grid">
       <div class="card my-angel">
-        <h3>😇 나의 천사</h3>
+        <h3 id="stAngelTitle">😇 나의 천사</h3>
         <div class="my-angel-row">
           <div class="my-angel-av" id="stAv"></div>
           <div class="my-angel-info">
@@ -179,28 +179,13 @@
         <h3>🚩 팀 순위 <small class="sub-note">(팀원 점수 평균)</small></h3>
         <ol id="stTeamList" class="rank-list"></ol>
       </div>
-      <div class="card rules">
-        <h3>🧩 울타리치기 방법</h3>
-        <ul>
-          <li>점과 점 사이를 <b>톡 누르면</b> 울타리가 생겨요. 점을 따라 <b>쭉 그어도</b> 돼요.</li>
-          <li>칸 안의 숫자 = 그 칸을 둘러싼 <b>울타리 개수</b> (0~3)</li>
-          <li>숫자가 없는 칸은 몇 개인지 알려 주지 않아요.</li>
-          <li>울타리는 <b>끊기지 않고 하나로 닫혀야</b> 해요. 두 개로 나뉘면 안 돼요.</li>
-          <li>모든 점을 쓸 필요는 없어요.</li>
-          <li>제출은 <b>딱 한 번</b>! 틀리면 0점이에요.</li>
-          <li>맞히면 <b>기본 점수</b>, 빨리 맞힌 친구는 <b>보너스</b>! 어려운 단계일수록 점수가 커져요.</li>
-        </ul>
-      </div>
-      <div class="card rules">
-        <h3>🧱 벽바둑 1 방법</h3>
-        <ul>
-          <li>친구와 <b>1:1 대결</b>! 7×7 판에서 각자 말 4개를 써요.</li>
-          <li>처음엔 말 2개가 놓여 있고, 나머지 2개는 <b>번갈아 직접 놓아요</b>.</li>
-          <li>내 차례: 말 하나를 <b>0~2칸</b> 움직이고(상하좌우, 꺾어도 OK), 그 칸 둘레에 <b>벽 1개</b>를 세워요.</li>
-          <li>벽과 다른 말은 지나갈 수 없어요. 세운 벽은 없앨 수 없어요.</li>
-          <li>서로 다른 색 말이 같은 공간에 없게 되면 끝! <b>내 말만 있는 공간의 칸 수</b>가 내 땅이에요.</li>
-          <li>한 수마다 제한 시간이 있어요. 시간이 지나면 아무 곳에나 저절로 둬요.</li>
-        </ul>
+      <div class="card how-card">
+        <h3>📖 게임 방법</h3>
+        <p class="hint">궁금한 게임을 누르면 설명 천사가 그림으로 알려 줘요.</p>
+        <div class="how-btns">
+          <button class="btn ghost how-btn" data-how="fence">🧩 울타리치기 방법</button>
+          <button class="btn ghost how-btn" data-how="wallgo">🧱 벽바둑 1 방법</button>
+        </div>
       </div>
     </div>
   </div>
@@ -496,6 +481,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v1.6"></script>
+<script type="module" src="app.js?v=v1.7"></script>
 </body>
 </html>
