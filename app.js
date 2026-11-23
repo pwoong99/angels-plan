@@ -6,14 +6,14 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v2.3";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.3";
-import * as WG from "./wallgo.js?v=v2.3";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.3";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.3";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.3";
+import { PUZZLES } from "./puzzles.js?v=v2.4";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.4";
+import * as WG from "./wallgo.js?v=v2.4";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.4";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.4";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.4";
 
-const VERSION = "v2.3";
+const VERSION = "v2.4";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -31,7 +31,7 @@ const auth = getAuth(fbApp);
 const GAMES = {
   fence: { name: "울타리치기", icon: "🧩", desc: "숫자를 보고 하나의 닫힌 울타리 완성하기 · 개인전", team: false },
   wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2~4명이 한 조로 대결 · 벽을 세워 내 땅 넓히기", team: false },
-  wallgo2: { name: "벽바둑 2", icon: "🔷", desc: "벽바둑에 네모 말(곧게 3칸)·동그라미 말(꺾어서 2칸)이 생겼어요 · 2~4명", team: false },
+  wallgo2: { name: "벽바둑 2", icon: "🔷", desc: "벽바둑에 네모 말(곧게만 2칸)·동그라미 말(꺾어서 2칸)이 생겼어요 · 2~4명", team: false },
   sym: { name: "대칭 퍼즐", icon: "🦋", desc: "조각을 옮기고 돌려서 선대칭 모양 만들기 · 개인전 · 먼저 완성할수록 높은 등수", team: false },
   cube: { name: "큐브 세기", icon: "🧊", desc: "쌓인 큐브가 모두 몇 개인지 빨리 세기 · 개인전 · 한 판 5문제", team: false }
 };
@@ -343,9 +343,9 @@ const EXPLAIN = {
   wallgo2: [
     { title: "🔷 벽바둑 2란?", text: "벽바둑 1과 같은 땅따먹기인데, 말이 두 종류예요!\n네모 말과 동그라미 말을 잘 골라 써야 해요.", show: () => wallShow(WG2_DEMO.init) },
     { title: "말 놓기", text: "2명: 네모 2개 + 동그라미 2개 (정해진 자리에 하나씩, 직접 놓기도 하나씩)\n3~4명: 네모 1개(정해진 자리) + 동그라미 1개(직접 놓기)", show: () => wallShow(WG2_DEMO.placed) },
-    { title: "🟦 네모 말", text: "한 방향으로 곧게만 가요. 대신 1~3칸까지 멀리 갈 수 있어요!\n꺾을 수는 없어요. 제자리에 있어도 돼요.",
-      show: () => { const m = WG2_DEMO.placed; wallShow(m, { active: true, sel: wg2Sel(m, "s") }); return pill("곧게 1~3칸", "y"); } },
-    { title: "⚪ 동그라미 말", text: "벽바둑 1의 말처럼 1~2칸 움직여요. 꺾어서 가도 돼요!\n좁은 길을 돌아 나갈 때 좋아요.",
+    { title: "🟦 네모 말", text: "한 방향으로 곧게 1~2칸 가요.\n꺾을 수는 없어요. 제자리에 있어도 돼요.",
+      show: () => { const m = WG2_DEMO.placed; wallShow(m, { active: true, sel: wg2Sel(m, "s") }); return pill("곧게 1~2칸", "y"); } },
+    { title: "⚪ 동그라미 말", text: "벽바둑 1의 말처럼 1~2칸 움직여요. 꺾어서 가도 돼요!\n모퉁이를 돌아 나갈 수 있는 게 네모 말과 다른 점이에요.",
       show: () => { const m = WG2_DEMO.placed; wallShow(m, { active: true, sel: wg2Sel(m, "r") }); return pill("꺾어서 1~2칸", "g"); } },
     { title: "벽 세우기와 끝", text: "움직인 칸 둘레에 벽을 꼭 하나 세워요.\n서로 다른 색 말이 같은 공간에 없으면 끝! 내 말만 있는 공간이 내 땅이에요.",
       show: () => { const m = WG2_DEMO.end; wallShow(m, { regions: true }); return pill(`분홍 땅 ${m.scores.a}칸`, "p") + pill(`파랑 땅 ${m.scores.b}칸`); } },

@@ -29,7 +29,7 @@ export function newMatch(n = 2, extra = {}) {
   return { sides, phase: "place", turn: placeOrder({ sides })[0], placeNo: 0, moveNo: 0, stones, walls: emptyWalls(), ...extra };
 }
 
-// 벽바둑 2: 말이 두 종류. 네모(s) = 한 방향으로 곧게 1~3칸(꺾기 X) / 동그라미(r) = 1~2칸, 꺾어도 됨
+// 벽바둑 2: 말이 두 종류. 네모(s) = 한 방향으로 곧게 1~2칸(꺾기 X) / 동그라미(r) = 1~2칸, 꺾어도 됨
 // 2명: 네모 2 + 동그라미 2 (정해진 자리에 하나씩, 직접 놓는 것도 하나씩) / 3~4명: 네모 1(정해진 자리) + 동그라미 1(직접 놓기)
 export const KIND_NAMES = { s: "네모", r: "동그라미" };
 export function newMatch2(n = 2, extra = {}) {
@@ -86,7 +86,7 @@ export function occupied(stones) {
 export function freeWallsAround(cell, walls) {
   return adj(cell).map((n) => wallBetween(cell, n)).filter((w) => walls[w] === "0");
 }
-// 0~2칸 안에 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~3칸
+// 0~2칸 안에 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~2칸
 const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 export function reachable(state, from) {
   const occ = occupied(state.stones);
@@ -94,7 +94,7 @@ export function reachable(state, from) {
   if (kindOf(state, from) === "s") {
     for (const [dr, dc] of DIRS) {
       let cur = from;
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < 2; k++) {
         const r = Math.floor(cur / N) + dr, c = (cur % N) + dc;
         if (r < 0 || r >= N || c < 0 || c >= N) break;
         const nx = r * N + c;

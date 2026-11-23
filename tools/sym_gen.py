@@ -49,7 +49,7 @@ def sym_shape(total):
         S=norm(S)
         if abs(len(S)-total)<=1 and connected(S):
             w=max(x for x,y in S)+1; hh=max(y for x,y in S)+1
-            if w<=7 and hh<=7: return S
+            if w<=8 and hh<=8: return S
     return None
 def cut(S,k):
     S=list(S)
@@ -70,7 +70,12 @@ def cut(S,k):
 def trivial(pieces):
     # 조각을 원래 방향 그대로 나란히 붙여도 쉽게 되는지는 검사 어려움 → 생략
     return False
-LEVELS=[("연습 1",2,(4,6)),("연습 2",2,(6,7)),("1단계",3,(7,8)),("2단계",3,(8,10)),("3단계",3,(10,12)),("4단계",3,(12,14)),("5단계",4,(12,15)),("6단계",4,(15,18))]
+# 모든 문제 = 조금 복잡해 보이는 선대칭 도형을 3조각으로 자른 것. 단계가 오를수록 칸 수와 울퉁불퉁함이 커짐
+LEVELS=[("연습 1",3,(7,8),2),("연습 2",3,(8,9),4),("1단계",3,(9,10),4),("2단계",3,(10,12),4),("3단계",3,(12,14),6),("4단계",3,(14,16),6),("5단계",3,(16,18),8),("6단계",3,(18,21),8)]
+import math
+def perim(S):
+    S=set(S); return sum(1 for x,y in S for dx,dy in D4 if (x+dx,y+dy) not in S)
+def minper(n): return 2*math.ceil(2*math.sqrt(n))
 WS=(12,9)   # 작업판 칸 수
 def scatter(pieces):
     W,H=WS
@@ -91,12 +96,13 @@ def scatter(pieces):
         if ok: return out
     return None
 out=[]
-for name,k,(lo,hi) in LEVELS:
+for name,k,(lo,hi),extra in LEVELS:
     puz=[]; seen=set(); tries=0
-    while len(puz)<30 and tries<8000:
+    while len(puz)<30 and tries<30000:
         tries+=1
         S=sym_shape(random.randint(lo,hi))
-        if not S: continue
+        if not S or not (lo<=len(S)<=hi): continue
+        if perim(S) < minper(len(S)) + extra: continue
         cp=cut(S,k)
         if not cp: continue
         ps=[a for a,b in cp]; sol=[list(b) for a,b in cp]
