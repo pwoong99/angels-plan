@@ -91,10 +91,32 @@
     </form>
 
     <form id="teacherForm" class="form hidden">
-      <label>선생님 비밀번호
-        <input id="teacherPw" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••••">
+      <label>선생님 이름 <small class="lbl-note">(관리자는 비워 두세요)</small>
+        <input id="teacherName" maxlength="20" autocomplete="off" placeholder="등록한 이름">
+      </label>
+      <label>비밀번호
+        <input id="teacherPw" type="password" autocomplete="off" placeholder="••••••••">
       </label>
       <button type="submit" class="btn primary big">선생님으로 입장하기 →</button>
+      <button type="button" class="link-btn" id="toRegister">✏️ 처음이신가요? 선생님으로 등록하기</button>
+    </form>
+
+    <form id="registerForm" class="form hidden">
+      <p class="reg-note">등록하면 관리자 선생님이 승인한 뒤에 입장할 수 있어요.</p>
+      <label>이름 <small class="lbl-note">(입장할 때 쓰는 이름)</small>
+        <input id="regName" maxlength="20" autocomplete="off" placeholder="예: 김하늘">
+      </label>
+      <label>학교·학년 반 <small class="lbl-note">(관리자가 알아볼 수 있게)</small>
+        <input id="regSchool" maxlength="30" autocomplete="off" placeholder="예: 신대초 6학년 1반">
+      </label>
+      <label>비밀번호 <small class="lbl-note">(4자 이상)</small>
+        <input id="regPw" type="password" autocomplete="new-password" placeholder="••••">
+      </label>
+      <label>비밀번호 확인
+        <input id="regPw2" type="password" autocomplete="new-password" placeholder="••••">
+      </label>
+      <button type="submit" class="btn primary big">등록 신청하기</button>
+      <button type="button" class="link-btn" id="toLogin">← 선생님 입장으로 돌아가기</button>
     </form>
 
     <p id="entryMsg" class="msg"></p>
@@ -236,8 +258,10 @@
       <span class="room-code">방 번호 <b id="tCode">----</b></span>
       <span class="chip memo-chip hidden" id="tMemo"></span>
       <span class="chip">👥 <b id="tCount">0</b>명</span>
+      <span class="chip who-chip" id="tWho"></span>
     </div>
     <div class="bar-right">
+      <button class="btn ghost small hidden" id="tAdminBtn">👑 교사 승인 <b id="tPendingCnt" class="pend-cnt"></b></button>
       <button class="btn ghost small" id="tRankBtn">🏆 순위판</button>
       <button class="btn ghost small" id="tPtsBtn">⚙️ 점수 설정</button>
       <button class="btn ghost small" id="tResetBtn">✨ 새 이벤트 시작</button>
@@ -363,6 +387,18 @@
       </div>
     </div>
     <button class="btn primary big" id="avSave">이 캐릭터로 할래요!</button>
+  </div>
+</div>
+
+<!-- 관리자: 교사 승인 -->
+<div id="adminModal" class="overlay hidden">
+  <div class="modal wide">
+    <div class="av-head"><h3>👑 교사 승인 관리</h3><button class="btn ghost small" id="adminClose">닫기</button></div>
+    <p class="hint">등록 신청한 선생님을 승인하면 그 이름과 비밀번호로 입장할 수 있어요. 승인을 취소하면 바로 입장이 막혀요.</p>
+    <h4>⏳ 승인 대기</h4>
+    <div id="adminPending" class="acc-list"></div>
+    <h4>✅ 승인된 선생님</h4>
+    <div id="adminApproved" class="acc-list"></div>
   </div>
 </div>
 

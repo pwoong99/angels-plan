@@ -438,6 +438,21 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 #explainBtn { margin-top: 8px; }
 @media (max-width: 1100px) { .t-two { grid-template-columns: 1fr; } .t-ranks { position: static; } }
 
+/* ===== 교사 등록·승인 ===== */
+.lbl-note { color: var(--muted); font-weight: 600; font-size: .8rem; }
+.link-btn { display: block; margin: 12px auto 0; border: 0; background: none; color: var(--blue); font-weight: 700; font-size: .95rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.reg-note { background: #fff7dc; border: 2px solid #ffe49a; border-radius: 14px; padding: 10px 12px; font-weight: 700; font-size: .92rem; margin: 0 0 14px; color: #8a6200; }
+.ok-msg { color: var(--mint-d); }
+.who-chip { background: #f1eaff; color: #7a55d8; }
+.pend-cnt { background: var(--red); color: #fff; border-radius: 999px; padding: 0 7px; font-size: .8rem; }
+.pend-cnt:empty { display: none; }
+.acc-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.acc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 14px; background: #f6f8fe; border: 2px solid var(--line); }
+.acc b { font-family: "Jua"; font-weight: 400; font-size: 1.15rem; }
+.acc small { color: var(--muted); font-weight: 700; flex: 1; }
+.acc .btn { padding: 7px 12px; font-size: .9rem; }
+.room-owner { font-size: .8rem; font-weight: 700; color: #7a55d8; background: #f1eaff; border-radius: 999px; padding: 2px 9px; }
+
 /* 축하 꽃가루 */
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
 #confetti i { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 3px; animation: fall linear forwards; }

@@ -11,7 +11,7 @@ import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer 
 import * as WG from "./wallgo.js";
 import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js";
 
-const VERSION = "v1.3";
+const VERSION = "v1.4";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -347,6 +347,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
     document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
     $("studentForm").classList.toggle("hidden", tab.dataset.tab !== "student");
     $("teacherForm").classList.toggle("hidden", tab.dataset.tab !== "teacher");
+    $("registerForm").classList.add("hidden");
     $("entryMsg").textContent = "";
   });
 });
@@ -368,13 +369,44 @@ $("studentForm").addEventListener("submit", async (e) => {
   catch (err) { console.error(err); $("entryMsg").textContent = err.userMsg || "입장하지 못했어요. 다시 시도해 주세요."; }
   finally { btn.disabled = false; }
 });
+const cleanName = (n) => String(n || "").trim().replace(/[\/\\.#$\[\]]/g, "").slice(0, 20);
+try { const tn = localStorage.getItem("angel_teacher_name"); if (tn) $("teacherName").value = tn; } catch (e) { /* 없음 */ }
+$("toRegister").addEventListener("click", () => { $("teacherForm").classList.add("hidden"); $("registerForm").classList.remove("hidden"); $("entryMsg").textContent = ""; });
+$("toLogin").addEventListener("click", () => { $("registerForm").classList.add("hidden"); $("teacherForm").classList.remove("hidden"); $("entryMsg").textContent = ""; });
+$("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = cleanName($("regName").value), school = $("regSchool").value.trim().slice(0, 30);
+  const pw = $("regPw").value, pw2 = $("regPw2").value;
+  const msg = (t) => ($("entryMsg").textContent = t);
+  if (!name) return msg("이름을 적어 주세요.");
+  if (pw.length < 4) return msg("비밀번호는 4자 이상으로 정해 주세요.");
+  if (pw !== pw2) return msg("비밀번호 확인이 달라요.");
+  const btn = e.submitter; btn.disabled = true; msg("");
+  try {
+    await authReady;
+    const acc = doc(db, "teacherAccounts", name);
+    if ((await getDoc(acc)).exists()) throw userErr("이미 등록된 이름이에요. 다른 이름(예: 김하늘2)으로 해 주세요.");
+    const k = await sha256(`angels-teacher-acc:${name}:${pw}`);
+    const batch = writeBatch(db);
+    batch.set(acc, { name, school, approved: false, createdAt: serverTimestamp() });
+    batch.set(doc(db, "teacherSecrets", name), { kh: await sha256(k) });
+    await batch.commit();
+    ["regName", "regSchool", "regPw", "regPw2"].forEach((id) => ($(id).value = ""));
+    $("registerForm").classList.add("hidden"); $("teacherForm").classList.remove("hidden");
+    $("teacherName").value = name;
+    msg("");
+    toast("등록 신청을 보냈어요! 관리자 선생님이 승인하면 입장할 수 있어요.");
+    $("entryMsg").innerHTML = `<span class="ok-msg">✅ ${esc(name)} 선생님, 등록 신청을 보냈어요. 승인 후 입장해 주세요.</span>`;
+  } catch (err) { console.error(err); msg(err.userMsg || "등록하지 못했어요. 다시 시도해 주세요."); }
+  finally { btn.disabled = false; }
+});
 $("teacherForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const pw = $("teacherPw").value.trim();
+  const pw = $("teacherPw").value.trim(), name = cleanName($("teacherName").value);
   if (!pw) return ($("entryMsg").textContent = "비밀번호를 적어 주세요.");
   const btn = e.submitter; btn.disabled = true;
   $("entryMsg").textContent = "";
-  try { await teacherLogin(pw); $("teacherPw").value = ""; }
+  try { await teacherLogin(pw, name); $("teacherPw").value = ""; }
   catch (err) { console.error(err); $("entryMsg").textContent = err.userMsg || "입장하지 못했어요. 다시 시도해 주세요."; }
   finally { btn.disabled = false; }
 });
@@ -857,24 +889,47 @@ $("prCheck").addEventListener("click", () => {
 const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, game: null, boardKey: null, answer: false, tick: null, autoTry: new Map() };
 const tBoard = new Board($("tBoard"));
 
-async function teacherLogin(pw) {
+// 관리자: 이름 없이 관리자 비밀번호 / 선생님: 등록한 이름 + 비밀번호 (관리자 승인 필요)
+async function teacherLogin(pw, name = "") {
   await authReady;
-  const k = await sha256("angels-teacher:" + pw);
-  const tRef = doc(db, "teachers", user.uid);
-  let ok = false;
-  try {
-    const s = await getDoc(tRef);
-    if (s.exists()) ok = s.get("k") === k;
-    else { await setDoc(tRef, { k, at: serverTimestamp() }); ok = true; }
-  } catch (e) { console.warn(e); ok = false; }
-  if (!ok) throw userErr("비밀번호가 맞지 않아요.");
-  let code = localStorage.getItem("angel_teacher_room");
+  if (!name) {
+    const k = await sha256("angels-teacher:" + pw);
+    const tRef = doc(db, "teachers", user.uid);
+    let ok = false;
+    try {
+      const s = await getDoc(tRef);
+      if (s.exists()) ok = s.get("k") === k;
+      else { await setDoc(tRef, { k, at: serverTimestamp() }); ok = true; }
+    } catch (e) { console.warn(e); ok = false; }
+    if (!ok) throw userErr("관리자 비밀번호가 맞지 않아요. 등록한 선생님은 이름도 적어 주세요.");
+    Object.assign(T, { role: "admin", owner: "admin", tname: "관리자" });
+  } else {
+    const acc = await getDoc(doc(db, "teacherAccounts", name)).catch(() => null);
+    if (!acc || !acc.exists()) throw userErr("등록되지 않은 이름이에요. 먼저 선생님으로 등록해 주세요.");
+    if (!acc.get("approved")) throw userErr("아직 관리자 승인을 기다리는 중이에요.");
+    const k = await sha256(`angels-teacher-acc:${name}:${pw}`);
+    try { await setDoc(doc(db, "tsessions", user.uid), { name, k, at: serverTimestamp() }); }
+    catch (e) { console.warn(e); throw userErr("비밀번호가 맞지 않아요."); }
+    Object.assign(T, { role: "teacher", owner: name, tname: name });
+    localStorage.setItem("angel_teacher_name", name);
+  }
+  startTeacher(await pickRoom());
+}
+const roomKey = () => "angel_teacher_room_" + T.owner;
+const canUseRoom = (r) => T.role === "admin" || (r && r.owner === T.owner);
+async function pickRoom() {
+  let code = localStorage.getItem(roomKey());
   if (code) {
     const s = await getDoc(doc(db, "rooms", code)).catch(() => null);
-    if (!s || !s.exists()) code = null;
+    if (!s || !s.exists() || !canUseRoom(s.data())) code = null;
   }
-  if (!code) code = await createRoom();
-  startTeacher(code);
+  if (!code) {
+    const qs = await getDocs(collection(db, "rooms")).catch(() => null);
+    const mine = qs ? qs.docs.filter((d) => (d.data().owner || "admin") === T.owner)
+      .sort((a, b) => (ms(b.data().touchedAt) || 0) - (ms(a.data().touchedAt) || 0)) : [];
+    code = mine.length ? mine[0].id : await createRoom(T.role === "teacher" ? T.owner + " 선생님 방" : "");
+  }
+  return code;
 }
 
 async function createRoom(memo = "") {
@@ -885,7 +940,7 @@ async function createRoom(memo = "") {
     if (s.exists()) continue;
     await setDoc(ref, {
       status: "waiting", round: 0, game: "fence", level: 1, times: DEFAULT_TIMES, pts: DEFAULT_PTS, wg: DEFAULT_WG, turnSec: DEFAULT_TURN,
-      teamCount: 0, used: {}, memo: String(memo).slice(0, 30), createdAt: serverTimestamp(), touchedAt: serverTimestamp()
+      teamCount: 0, used: {}, memo: String(memo).slice(0, 30), owner: T.owner || "admin", createdAt: serverTimestamp(), touchedAt: serverTimestamp()
     });
     return code;
   }
@@ -896,7 +951,9 @@ function stopTeacher() { T.unsubs.forEach((u) => u()); T.unsubs = []; clearInter
 
 async function startTeacher(code) {
   stopTeacher();
-  localStorage.setItem("angel_teacher_room", code);
+  localStorage.setItem(roomKey(), code);
+  $("tWho").textContent = T.role === "admin" ? "👑 관리자" : `🧑‍🏫 ${T.tname} 선생님`;
+  $("tAdminBtn").classList.toggle("hidden", T.role !== "admin");
   const roomRef = doc(db, "rooms", code);
   Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, game: null, boardKey: null, answer: false, autoTry: new Map() });
   $("tCode").textContent = code;
@@ -921,6 +978,14 @@ async function startTeacher(code) {
     renderTeacher(); gradeMatches();
   }));
   T.tick = setInterval(teacherTick, 250);
+  if (T.role === "admin") {
+    T.unsubs.push(onSnapshot(collection(db, "teacherAccounts"), (qs) => {
+      T.accounts = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const n = T.accounts.filter((a) => !a.approved).length;
+      $("tPendingCnt").textContent = n ? n : "";
+      if (!$("adminModal").classList.contains("hidden")) renderAdmin();
+    }, (e) => console.warn("교사 목록", e)));
+  }
 }
 
 const pRefOf = (id) => doc(db, "rooms", T.code, "players", id);
@@ -1409,6 +1474,7 @@ async function renderRooms() {
   try {
     const qs = await getDocs(collection(db, "rooms"));
     const rooms = qs.docs.map((d) => ({ id: d.id, ...d.data() }))
+      .filter((r) => T.role === "admin" || r.owner === T.owner)
       .sort((a, b) => (a.id === T.code ? -1 : b.id === T.code ? 1 : (ms(b.touchedAt) || 0) - (ms(a.touchedAt) || 0)));
     box.innerHTML = rooms.map((r) => {
       const cur = r.id === T.code, made = ms(r.createdAt), used = ms(r.touchedAt);
@@ -1417,7 +1483,7 @@ async function renderRooms() {
         <input class="memo-in" data-memo="${esc(r.id)}" maxlength="30" placeholder="메모 (예: 6학년 3반)" value="${esc(r.memo || "")}">
         ${cur ? `<span class="now">지금 방</span>` : `<button class="btn primary small" data-use="${esc(r.id)}">이 방으로</button>`}
         <button class="btn ghost small" data-del="${esc(r.id)}">지우기</button>
-        <span class="meta">${made ? "만든 날 " + fmtDate(made) : ""}${used ? " · 마지막 사용 " + fmtDate(used) : ""} · ${r.round || 0}라운드 진행</span>
+        <span class="meta">${T.role === "admin" ? `<span class="room-owner">${esc(!r.owner || r.owner === "admin" ? "👑 관리자" : r.owner + " 선생님")}</span> ` : ""}${made ? "만든 날 " + fmtDate(made) : ""}${used ? " · 마지막 사용 " + fmtDate(used) : ""} · ${r.round || 0}라운드 진행</span>
       </div>`;
     }).join("") || `<div class="empty">아직 방이 없어요.</div>`;
   } catch (e) { console.error(e); box.innerHTML = `<div class="empty">방 목록을 불러오지 못했어요.</div>`; }
@@ -1460,7 +1526,8 @@ $("roomList").addEventListener("click", async (e) => {
       toast(`방 ${code}을(를) 지웠어요.`);
       if (cur) {
         const left = await getDocs(collection(db, "rooms"));
-        startTeacher(left.docs.length ? left.docs[0].id : await createRoom());
+        const mine = left.docs.filter((d) => T.role === "admin" || d.data().owner === T.owner);
+        startTeacher(mine.length ? mine[0].id : await createRoom());
       }
       renderRooms();
     } catch (e) { console.error(e); toast("방을 지우지 못했어요."); }
@@ -1477,4 +1544,31 @@ $("newRoomBtn").addEventListener("click", async () => {
   } catch (e) { toast(e.userMsg || "새 방을 만들지 못했어요."); }
   finally { $("newRoomBtn").disabled = false; }
 });
-$("tLeave").addEventListener("click", () => { stopTeacher(); hideExplain(); showScreen("entry"); });
+$("tLeave").addEventListener("click", async () => {
+  stopTeacher(); hideExplain(); showScreen("entry");
+  if (T.role === "teacher" && user) deleteDoc(doc(db, "tsessions", user.uid)).catch(() => {});
+});
+// ----- 관리자: 교사 승인 -----
+function renderAdmin() {
+  const acc = (T.accounts || []).slice().sort((a, b) => (ms(b.createdAt) || 0) - (ms(a.createdAt) || 0));
+  const row = (a, btns) => `<div class="acc"><b>${esc(a.name)}</b><small>${esc(a.school || "")}${ms(a.createdAt) ? " · 신청 " + fmtDate(ms(a.createdAt)) : ""}</small>${btns}</div>`;
+  const pend = acc.filter((a) => !a.approved), ok = acc.filter((a) => a.approved);
+  $("adminPending").innerHTML = pend.map((a) => row(a, `<button class="btn primary" data-approve="${esc(a.id)}">승인</button><button class="btn ghost" data-remove="${esc(a.id)}">거절</button>`)).join("") || `<div class="empty">기다리는 신청이 없어요.</div>`;
+  $("adminApproved").innerHTML = ok.map((a) => row(a, `<button class="btn ghost" data-revoke="${esc(a.id)}">승인 취소</button><button class="btn ghost" data-remove="${esc(a.id)}">삭제</button>`)).join("") || `<div class="empty">아직 승인한 선생님이 없어요.</div>`;
+}
+$("tAdminBtn").addEventListener("click", () => { renderAdmin(); $("adminModal").classList.remove("hidden"); });
+$("adminClose").addEventListener("click", () => $("adminModal").classList.add("hidden"));
+$("adminModal").addEventListener("click", async (e) => {
+  const ap = e.target.closest("[data-approve]"), rv = e.target.closest("[data-revoke]"), rm = e.target.closest("[data-remove]");
+  try {
+    if (ap) { await updateDoc(doc(db, "teacherAccounts", ap.dataset.approve), { approved: true }); toast(`${ap.dataset.approve} 선생님을 승인했어요.`); }
+    else if (rv) { await updateDoc(doc(db, "teacherAccounts", rv.dataset.revoke), { approved: false }); toast("승인을 취소했어요."); }
+    else if (rm) {
+      const n = rm.dataset.remove;
+      if (!(await confirmBox(`${n} 선생님 등록을 지울까요?\n다시 쓰려면 새로 등록해야 해요.`, "지우기"))) return;
+      const b = writeBatch(db);
+      b.delete(doc(db, "teacherAccounts", n)); b.delete(doc(db, "teacherSecrets", n));
+      await b.commit(); toast("등록을 지웠어요.");
+    }
+  } catch (err) { console.error(err); toast("처리하지 못했어요. 보안 규칙을 게시했는지 확인해 주세요."); }
+});
