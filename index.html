@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=v1.5">
 </head>
 <body>
 
@@ -57,7 +57,7 @@
       <p id="introText"></p>
       <div class="intro-foot">
         <div class="intro-dots" id="introDots"></div>
-        <button class="btn primary" id="introNext">다음 ▶</button>
+        <button class="btn primary" id="introNext">다음</button>
       </div>
     </div>
   </div>
@@ -148,7 +148,11 @@
         <div class="bubble" id="stBubble">선생님이 시작하면 게임이 열려요!</div>
       </div>
       <div id="stResult" class="result hidden"></div>
-      <button class="btn sun big-ish" id="practiceBtn">🧩 기다리는 동안 울타리치기 연습하기</button>
+      <p class="prac-title">기다리는 동안 혼자 연습해요</p>
+      <div class="prac-btns">
+        <button class="btn sun big-ish" id="practiceBtn">🧩 울타리치기 연습</button>
+        <button class="btn sun big-ish" id="wgPracBtn">🧱 벽바둑 AI와 연습</button>
+      </div>
     </div>
     <div class="lobby-grid">
       <div class="card my-angel">
@@ -245,8 +249,26 @@
       <button class="btn tool" id="prErase">🧽 지우기</button>
       <button class="btn tool" id="prClear">🗑️ 전체 지우기</button>
       <button class="btn primary" id="prCheck">🔍 정답 확인</button>
+      <button class="btn ghost" id="prHint">💡 힌트</button>
       <button class="btn sun" id="prNext">🔄 다른 문제</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== 벽바둑 AI와 연습 ===== -->
+<div id="wgPractice" class="overlay hidden">
+  <div class="practice-card">
+    <div class="pr-head">
+      <h2>🧱 벽바둑 AI와 연습</h2>
+      <button class="btn ghost small" id="wpClose">닫기 ✕</button>
+    </div>
+    <div class="pr-levels" id="wpLevels"></div>
+    <div class="pr-coach">
+      <img class="porong" id="wpFace" src="img/porong-wave.jpg" alt="포롱이">
+      <div class="bubble" id="wpMsg"></div>
+    </div>
+    <div class="board-wrap"><svg id="wpBoard" class="board wg pr"></svg></div>
+    <div class="tools"><button class="btn sun" id="wpNew">🔄 새 판 시작</button></div>
   </div>
 </div>
 
@@ -360,7 +382,7 @@
       <div class="intro-dots" id="exDots"></div>
       <div class="ex-ctrl" id="exCtrl">
         <button class="btn ghost" id="exPrev">◀ 이전</button>
-        <button class="btn primary" id="exNext">다음 ▶</button>
+        <button class="btn primary" id="exNext">다음</button>
         <button class="btn danger" id="exEnd">설명 끝내기</button>
       </div>
       <span class="ex-wait" id="exWait">선생님이 다음 장면으로 넘겨 줄 거예요 👀</span>
@@ -472,7 +494,8 @@
 </div>
 
 <div id="toast" class="toast"></div>
+<div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=v1.5"></script>
 </body>
 </html>

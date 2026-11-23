@@ -152,6 +152,58 @@ export function forceFinish(m) {
   return { phase: "done", scoreA: ev.score.a, scoreB: ev.score.b, winner: winnerOf(ev.score), forced: true };
 }
 
+// ---------------- 연습용 AI ----------------
+// 땅 어림: 두 편 말에서 동시에 퍼져 나가 먼저 닿는 칸을 그 편 땅으로 셈 (벽만 막힘)
+function territory(st) {
+  const dist = { a: new Array(N * N).fill(99), b: new Array(N * N).fill(99) };
+  for (const s of ["a", "b"]) {
+    const q = [];
+    st.stones[s].forEach((c) => { if (c >= 0) { dist[s][c] = 0; q.push(c); } });
+    for (let i = 0; i < q.length; i++) {
+      const x = q[i];
+      for (const y of adj(x)) if (!blocked(st.walls, x, y) && dist[s][y] > dist[s][x] + 1) { dist[s][y] = dist[s][x] + 1; q.push(y); }
+    }
+  }
+  let a = 0, b = 0;
+  for (let c = 0; c < N * N; c++) { if (dist.a[c] < dist.b[c]) a++; else if (dist.b[c] < dist.a[c]) b++; }
+  return { a, b };
+}
+function scoreFor(st, side) {
+  const ev = evaluate(st);
+  if (ev.done) return (ev.score[side] - ev.score[other(side)]) * 10;
+  const t = territory(st);
+  return t[side] - t[other(side)];
+}
+// level: "easy"(아무 데나) / "normal"(땅을 넓히는 수 중에서 고름) / "hard"(가장 좋은 수)
+export function botAction(m, level = "normal") {
+  const side = m.turn;
+  if (level === "easy" && Math.random() < 0.6) return randomAction(m);
+  if (level === "easy") level = "normal";
+  const pickTop = (cands) => {
+    cands.sort((x, y) => y.v - x.v);
+    const k = level === "hard" ? 1 : Math.min(3, cands.length);
+    return cands[Math.floor(Math.random() * k)];
+  };
+  if (m.phase === "place") {
+    const cands = emptyCells(m).map((c) => {
+      const d = applyPlace(m, side, c);
+      return { c, v: d ? scoreFor({ ...m, ...d }, side) : -999 };
+    });
+    return applyPlace(m, side, pickTop(cands).c);
+  }
+  if (m.phase === "play") {
+    const mv = legalMoves(m, side);
+    if (!mv.length) return randomAction(m);
+    const cands = mv.map((x) => {
+      const d = applyMove(m, side, x.from, x.to, x.wall);
+      return { x, v: d ? scoreFor({ ...m, ...d }, side) + Math.random() * 0.3 : -999 };
+    });
+    const best = pickTop(cands).x;
+    return applyMove(m, side, best.from, best.to, best.wall);
+  }
+  return null;
+}
+
 // ---------------- 판 화면 ----------------
 const S = 60, M = 22, NS = "http://www.w3.org/2000/svg";
 let wgSeq = 0;

@@ -453,6 +453,13 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .acc .btn { padding: 7px 12px; font-size: .9rem; }
 .room-owner { font-size: .8rem; font-weight: 700; color: #7a55d8; background: #f1eaff; border-radius: 999px; padding: 2px 9px; }
 
+/* 연습 버튼·업데이트 알림 */
+.prac-title { margin: 14px 0 0; font-family: "Jua"; color: var(--muted); }
+.prac-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.prac-btns .btn { margin-top: 8px; }
+.pr-coach .porong { width: 74px; }
+.upd-bar { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); z-index: 50; background: #fff; border: 3px solid var(--blue); border-radius: 18px; padding: 8px 10px 8px 16px; display: flex; gap: 12px; align-items: center; font-weight: 800; box-shadow: 0 8px 24px rgba(91,141,239,.25); max-width: 94vw; }
+
 /* 축하 꽃가루 */
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
 #confetti i { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 3px; animation: fall linear forwards; }

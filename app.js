@@ -6,12 +6,12 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js";
-import * as WG from "./wallgo.js";
-import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js";
+import { PUZZLES } from "./puzzles.js?v=v1.5";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.5";
+import * as WG from "./wallgo.js?v=v1.5";
+import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.5";
 
-const VERSION = "v1.4";
+const VERSION = "v1.5";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -184,6 +184,26 @@ function resultText(res) {
   return { ok: false, big: "😢 아쉬워요, 오답!", sm: "다음 라운드에 다시 도전해요 · 0점" };
 }
 
+// ---------- 새 버전 알아채기 (브라우저에 저장된 예전 파일 대신 새 파일 불러오기) ----------
+async function checkVersion() {
+  try {
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
+    const j = await r.json();
+    if (!j.version || j.version === VERSION) return;
+    const reload = () => location.replace(location.pathname + "?v=" + encodeURIComponent(j.version));
+    const onFront = $("intro").classList.contains("active") || $("entry").classList.contains("active");
+    const key = "angel_reload_" + j.version;
+    let tried = false;
+    try { tried = !!sessionStorage.getItem(key); sessionStorage.setItem(key, "1"); } catch (e) { /* 없음 */ }
+    if (onFront && !tried) return reload();
+    $("updText").textContent = `새 버전(${j.version})이 나왔어요!`;
+    $("updBar").classList.remove("hidden");
+    $("updBtn").onclick = reload;
+  } catch (e) { /* 오프라인 등 */ }
+}
+checkVersion();
+setInterval(checkVersion, 3 * 60 * 1000);
+
 // ---------- 캐릭터 ----------
 // 아직 캐릭터를 안 만든 학생은 이름으로 정해지는 기본 캐릭터
 function avOf(p) {
@@ -263,7 +283,7 @@ function showExplain(r, teacher) {
   $("exCtrl").classList.toggle("hidden", !teacher);
   $("exWait").classList.toggle("hidden", teacher);
   $("exPrev").disabled = step === 0;
-  $("exNext").textContent = step === steps.length - 1 ? "설명 다 했어요 ✔" : "다음 ▶";
+  $("exNext").textContent = step === steps.length - 1 ? "설명 다 했어요" : "다음";
   const key = ex.game + ":" + step + ":" + (teacher ? "t" : "s");
   if (key === exKey) return;
   exKey = key;
@@ -296,7 +316,7 @@ function introShow(i) {
   setTimeout(() => { img.src = `img/${step.img}.jpg`; img.classList.remove("swap"); }, 180);
   $("introDots").innerHTML = INTRO.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("");
   const last = i === INTRO.length - 1;
-  $("introNext").textContent = last ? "엔젤스 플랜 시작하기 ✨" : "다음 ▶";
+  $("introNext").textContent = last ? "엔젤스 플랜 시작하기" : "다음";
   $("introNext").classList.toggle("final", last);
   clearInterval(IN.typing);
   IN.full = step.text;
@@ -866,7 +886,7 @@ function prLoad(lv) {
   }).join("");
 }
 function openPractice() { $("practice").classList.remove("hidden"); prLoad(PR.lv); }
-function closePractice() { $("practice").classList.add("hidden"); }
+function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); }
 $("practiceBtn").addEventListener("click", openPractice);
 $("prClose").addEventListener("click", closePractice);
 $("prLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-prlv]"); if (b) prLoad(Number(b.dataset.prlv)); });
@@ -874,6 +894,84 @@ $("prDraw").addEventListener("click", () => prSetTool("draw"));
 $("prErase").addEventListener("click", () => prSetTool("erase"));
 $("prClear").addEventListener("click", () => { prBoard.clear(); prSay(PR_INTRO[PR_LEVELS.indexOf(PR.lv)]); });
 $("prNext").addEventListener("click", () => prLoad(PR.lv));
+// 힌트: 틀린 울타리가 있으면 하나 치우고, 없으면 맞는 울타리를 하나 쳐 줌
+$("prHint").addEventListener("click", () => {
+  if (prBoard.locked) return;
+  const ans = decodeAnswer(PUZZLES[PR.lv].puzzles[PR.idx].a);
+  const wrong = [...prBoard.edges].find((e) => !ans.has(e));
+  prLastMsg = "";
+  if (wrong !== undefined) { prBoard.edges.delete(wrong); prSay("틀린 울타리 하나를 치웠어! 다시 생각해 봐."); }
+  else {
+    const miss = [...ans].filter((e) => !prBoard.edges.has(e));
+    if (!miss.length) return prSay("이미 다 맞았어! [정답 확인]을 눌러 봐.");
+    prBoard.edges.add(miss[Math.floor(Math.random() * miss.length)]);
+    prSay("울타리 하나를 대신 쳐 줬어. 나머지는 직접 해 봐!");
+  }
+  prBoard.bad = []; prBoard.fill = false; prBoard.draw();
+});
+
+// =====================================================================
+// 벽바둑 AI와 연습 (점수 없음, 내 기기에서만)
+// =====================================================================
+const WP_LEVELS = [["easy", "🐣 쉬움"], ["normal", "🙂 보통"], ["hard", "🔥 어려움"]];
+const WP = { m: null, level: "easy", me: "a", busy: false, timer: null };
+const wpBoard = new WG.WallBoard($("wpBoard"), {
+  onPlace: (c) => wpHuman((x) => WG.applyPlace(x, WP.me, c)),
+  onMove: (f, t, w) => wpHuman((x) => WG.applyMove(x, WP.me, f, t, w)),
+  onHint: (msg) => toast(msg)
+});
+wpBoard.onStep = () => wpStatus();
+function wpNew() {
+  clearTimeout(WP.timer); WP.busy = false;
+  WP.me = Math.random() < 0.5 ? "a" : "b";
+  WP.m = { phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls() };
+  $("wpLevels").innerHTML = WP_LEVELS.map(([k, n]) => `<button class="pr-lv ${k === WP.level ? "active" : ""}" data-wplv="${k}">AI ${n}</button>`).join("");
+  $("wpFace").src = "img/porong-wave.jpg";
+  wpRender(); wpBot();
+}
+function wpHuman(fn) {
+  if (!WP.m || WP.busy || WP.m.turn !== WP.me || WP.m.phase === "done") return;
+  const d = fn(WP.m);
+  if (!d) return toast("거기는 둘 수 없어요.");
+  WP.m = { ...WP.m, ...d }; wpRender(); wpBot();
+}
+function wpBot() {
+  const m = WP.m;
+  if (!m || m.phase === "done" || m.turn === WP.me) return;
+  WP.busy = true; wpRender();
+  WP.timer = setTimeout(() => {
+    const d = WG.botAction(WP.m, WP.level);
+    if (d) WP.m = { ...WP.m, ...d };
+    WP.busy = false; wpRender(); wpBot();
+  }, 650);
+}
+function wpRender() {
+  const m = WP.m;
+  wpBoard.render(m, WP.me, { active: m.phase !== "done" && m.turn === WP.me && !WP.busy, showRegions: m.phase === "done" });
+  wpStatus();
+}
+function wpStatus() {
+  const m = WP.m, el = $("wpMsg");
+  if (!m) return;
+  const color = WP.me === "a" ? "분홍" : "파랑";
+  if (m.phase === "done") {
+    const my = WP.me === "a" ? m.scoreA : m.scoreB, op = WP.me === "a" ? m.scoreB : m.scoreA;
+    const win = m.winner === WP.me, draw = m.winner === "draw";
+    el.textContent = `${win ? "🏆 이겼어!" : draw ? "🤝 비겼어!" : "😢 AI가 이겼어."} 내 땅 ${my}칸 : AI 땅 ${op}칸. [새 판 시작]으로 다시 해 봐!`;
+    $("wpFace").src = `img/porong-${win ? "trophy" : draw ? "cheer" : "cheerup"}.jpg`;
+    if (win) confetti();
+    return;
+  }
+  if (WP.busy || m.turn !== WP.me) { el.textContent = "AI가 생각하는 중이야… 🤔"; return; }
+  if (m.phase === "place") el.textContent = `나는 ${color}! 말을 놓을 빈칸을 눌러 봐. (순서: 분홍→파랑→파랑→분홍)`;
+  else el.textContent = wpBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러 (주황 점선, 또는 그 방향 칸)"
+    : wpBoard.sel !== null ? "② 갈 칸을 눌러 (초록 칸, 제자리도 OK)" : `내 차례(${color})! ① 움직일 내 말을 눌러 봐`;
+}
+function closeWgPractice() { clearTimeout(WP.timer); WP.busy = false; $("wgPractice").classList.add("hidden"); }
+$("wgPracBtn").addEventListener("click", () => { $("wgPractice").classList.remove("hidden"); wpNew(); });
+$("wpClose").addEventListener("click", closeWgPractice);
+$("wpNew").addEventListener("click", wpNew);
+$("wpLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-wplv]"); if (b) { WP.level = b.dataset.wplv; wpNew(); } });
 $("prCheck").addEventListener("click", () => {
   const L = PUZZLES[PR.lv];
   const d = diagnose(L.w, L.h, L.puzzles[PR.idx].c, prBoard.edges);
