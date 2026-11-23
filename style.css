@@ -421,8 +421,9 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .ex-game { font-family: "Jua"; font-size: 1.5rem; color: var(--pink-d); }
 .ex-step { font-family: "Jua"; color: var(--muted); }
 .ex-body { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-.ex-guide { width: 220px; flex: none; margin: 0 auto; }
-.ex-guide img { width: 100%; border-radius: 50%; background: #fff; box-shadow: 0 0 0 8px #f1f5ff; animation: bob 3s ease-in-out infinite; }
+.ex-guide { width: 210px; flex: none; margin: 0 auto; position: relative; display: flex; justify-content: center; }
+.ex-guide img { height: min(330px, 42vh); width: auto; max-width: 100%; object-fit: contain; border-radius: 26px; background: #fff; animation: bob 3s ease-in-out infinite; transition: opacity .2s; }
+.ex-name { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); font-family: "Jua"; background: var(--pink); color: #fff; padding: 3px 14px; border-radius: 999px; white-space: nowrap; }
 .ex-main { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 12px; }
 .ex-bubble { background: #f6f9ff; border: 2.5px solid var(--line); border-radius: 22px; padding: 14px 18px; }
 .ex-bubble b { font-family: "Jua"; font-weight: 400; font-size: 1.45rem; color: var(--blue); display: block; margin-bottom: 4px; }

@@ -6,12 +6,12 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.5";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.5";
-import * as WG from "./wallgo.js?v=v1.5";
-import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.5";
+import { PUZZLES } from "./puzzles.js?v=v1.6";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.6";
+import * as WG from "./wallgo.js?v=v1.6";
+import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.6";
 
-const VERSION = "v1.5";
+const VERSION = "v1.6";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -217,7 +217,10 @@ const avHTML = (p, cls = "avatar") => avatarSVG(avOf(p), p ? p.score || 0 : 0, {
 
 // ---------- 게임 설명 (설명 캐릭터가 장면마다 설명, 선생님이 넘김) ----------
 // 설명 캐릭터 그림: 새 그림을 받으면 img/ 에 넣고 아래 이름만 바꾸면 됨
-const GUIDE_IMG = ["porong-host", "porong-wand", "porong-oh", "porong-cheer", "porong-wave", "porong-trophy"];
+const GUIDE_IMG = {
+  fence: ["guide-main", "guide-point", "guide-think", "guide-book", "guide-thumb"],
+  wallgo: ["guide-main", "guide-point", "guide-three", "guide-book", "guide-think", "guide-bow"]
+};
 const FENCE_DEMO = (() => { const L = PUZZLES[0], P = L.puzzles[0]; return { w: L.w, h: L.h, c: P.c, ans: decodeAnswer(P.a) }; })();
 const WG_DEMO = (() => {
   let m = { phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, turnSec: DEFAULT_TURN, stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls() };
@@ -275,6 +278,7 @@ const EXPLAIN = {
   ]
 };
 let exKey = null;
+Object.values(GUIDE_IMG).flat().forEach((n) => { const im = new Image(); im.src = `img/${n}.jpg`; });
 function showExplain(r, teacher) {
   const ex = r && r.explain, steps = ex && EXPLAIN[ex.game];
   if (!steps) { hideExplain(); return; }
@@ -290,7 +294,8 @@ function showExplain(r, teacher) {
   $("exGame").textContent = `${GAMES[ex.game].icon} ${GAMES[ex.game].name} 게임 설명`;
   $("exStep").textContent = `${step + 1} / ${steps.length}`;
   $("exDots").innerHTML = steps.map((_, k) => `<i class="${k === step ? "on" : ""}"></i>`).join("");
-  $("exImg").src = `img/${GUIDE_IMG[step % GUIDE_IMG.length]}.jpg`;
+  const gi = GUIDE_IMG[ex.game] || GUIDE_IMG.fence;
+  $("exImg").src = `img/${gi[step % gi.length]}.jpg`;
   $("exTitle").textContent = S.title;
   $("exText").textContent = S.text;
   const extra = S.show(r) || "";
