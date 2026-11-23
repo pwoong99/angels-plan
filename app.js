@@ -6,12 +6,12 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.9";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.9";
-import * as WG from "./wallgo.js?v=v1.9";
-import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.9";
+import { PUZZLES } from "./puzzles.js?v=v2.0";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.0";
+import * as WG from "./wallgo.js?v=v2.0";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.0";
 
-const VERSION = "v1.9";
+const VERSION = "v2.0";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -208,6 +208,7 @@ async function checkVersion() {
   } catch (e) { /* 오프라인 등 */ }
 }
 checkVersion();
+preloadAvatar();
 setInterval(checkVersion, 3 * 60 * 1000);
 
 // ---------- 캐릭터 ----------
@@ -768,7 +769,7 @@ function renderAvatarModal() {
   let h = "";
   for (let i = 0; i < PARTS[AV.tab].n; i++) {
     const a = { ...AV.draft, [AV.tab]: i };
-    h += `<button class="av-opt ${AV.draft[AV.tab] === i ? "active" : ""}" data-avopt="${i}"><span class="av-mini">${avatarSVG(a, score)}</span>${esc(OPTION_LABELS[AV.tab][i])}</button>`;
+    h += `<button class="av-opt ${AV.draft[AV.tab] === i ? "active" : ""}" data-avopt="${i}"><span class="av-mini">${avatarSVG(a, score, { view: AV.tab === "body" ? "0 0 120 150" : "14 2 92 96" })}</span>${esc(OPTION_LABELS[AV.tab][i])}</button>`;
   }
   $("avOpts").innerHTML = h;
 }

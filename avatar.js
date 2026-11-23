@@ -1,32 +1,28 @@
-// 나만의 천사 캐릭터 — 얼굴(얼굴형·피부·눈·입·머리·머리색) + 몸(옷 세트: 옷·손·다리·신발) + 점수로 자라는 날개
+// 나만의 천사 캐릭터 — 그림 부품(한 장짜리 묶음 그림 img/avatar.webp)을 겹쳐 그림
+// 얼굴형·눈·입·머리·옷 + 피부색·머리색은 색 필터로 바꿈 + 총 점수로 자라는 날개
+export const ASSET_V = "v2.0";
+const IMG = "img/avatar.webp?v=" + ASSET_V;
+const D = {"W":2048,"H":1317,"face":[{"i":[24.14,16.0,71.81,68.8,"s",1248,471,187,179],"el":[46.65,59.43],"er":[73.19,59.43],"m":[59.92,71.6],"k":1.003},{"i":[25.7,16.0,68.7,70.41,"s",1256,275,179,183],"el":[47.5,58.24],"er":[72.39,58.24],"m":[59.95,69.65],"k":0.941},{"i":[24.39,16.0,71.31,67.6,"s",0,654,185,176],"el":[46.4,57.52],"er":[73.48,57.52],"m":[59.94,69.94],"k":1.024},{"i":[26.0,16.0,68.1,65.49,"s",1141,654,177,170],"el":[47.87,53.93],"er":[72.08,53.93],"m":[59.98,65.03],"k":0.915},{"i":[25.15,16.0,69.81,64.18,"s",1541,654,181,167],"el":[46.29,50.5],"er":[73.59,50.5],"m":[59.94,63.01],"k":1.032},{"i":[29.67,16.0,60.77,69.1,"s",898,471,158,180],"el":[49.35,59.32],"er":[70.54,59.32],"m":[59.94,69.03],"k":0.801}],"eyes":[{"s":0,"p":[[[-7.74,-9.97,15.55,20.39,"p",1967,1144,40,53]],[[-7.77,-10.01,15.55,20.39,"p",1925,1144,40,53]]]},{"s":0,"p":[[[-6.58,-3.09,13.84,6.92,"s",1790,1255,36,18],[-7.48,-9.11,15.1,18.67,"p",601,1255,39,49]],[[-7.22,-3.24,13.84,7.07,"s",1587,1255,36,18],[-7.51,-9.11,15.18,18.67,"p",642,1255,39,49]]]},{"s":0,"p":[[[-7.22,-7.74,14.51,15.55,"p",1133,1255,38,40]],[[-7.25,-7.74,14.58,15.55,"p",1002,1255,38,40]]]},{"s":0,"p":[[[-7.77,-10.01,15.55,20.46,"p",42,1255,40,53]],[[-7.22,-7.03,14.51,14.14,"p",1360,1255,38,37]]]},{"s":0,"p":[[[-7.63,-9.71,15.4,19.79,"p",375,1255,40,51]],[[-7.74,-9.71,15.55,19.79,"p",417,1255,40,51]]]},{"s":0,"p":[[[-7.7,-9.93,15.48,20.31,"p",0,1255,40,53]],[[-7.96,-9.93,15.7,20.24,"p",1882,1144,41,53]]]},{"s":0,"p":[[[-8.7,-7.44,17.48,15.4,"p",1042,1255,45,40]],[[-7.96,-7.48,16.0,15.48,"p",1089,1255,42,40]]]},{"s":0,"p":[[[-7.63,-8.52,15.48,19.34,"p",517,1255,40,50]],[[-7.85,-8.52,15.55,19.34,"p",559,1255,40,50]]]},{"s":0,"p":[[[-4.61,5.36,11.01,2.68,"s",30,1310,29,7],[-7.89,-7.44,15.85,15.55,"p",921,1255,41,40]],[[-6.21,5.1,11.09,2.98,"s",1963,1255,29,8],[-7.77,-7.48,15.7,15.55,"p",1273,1255,41,40]]]},{"s":0,"p":[[[-2.16,3.35,8.7,4.69,"s",1895,1255,23,12],[-7.74,-8.56,15.62,17.71,"p",749,1255,41,46]],[[-6.47,3.2,8.85,4.84,"s",1870,1255,23,13],[-7.81,-8.56,15.62,17.71,"p",792,1255,41,46]]]},{"s":0,"p":[[[-5.95,-9.04,11.98,18.15,"p",683,1255,31,47]],[[-5.95,-9.04,11.98,18.15,"p",716,1255,31,47]]]},{"s":1,"p":[[[-21.86,-10.02,43.79,20.11,"p",201,1255,114,52]]]},{"s":1,"p":[[[-22.16,-10.09,44.32,20.26,"p",84,1255,115,53]]]},{"s":0,"p":[[[-0.71,5.84,10.71,2.68,"s",0,1310,28,7],[-11.49,-6.81,23.14,15.33,"p",1211,1255,60,40]],[[-6.29,5.99,10.19,2.53,"s",105,1310,27,7],[-8.0,-6.81,16.07,15.33,"p",1316,1255,42,40]]]},{"s":0,"p":[[[-6.88,-7.7,13.91,15.48,"p",964,1255,36,40]],[[-6.81,-7.7,13.91,15.48,"p",1173,1255,36,40]]]}],"mouth":[[-5.75,0.0,11.53,3.05,"p",1994,1255,30,8],[-6.21,0.0,12.46,7.89,"p",1457,1255,32,21],[-5.34,0.0,10.71,3.79,"p",1933,1255,28,10],[-2.12,0.0,4.28,4.35,"p",1920,1255,11,11],[-5.73,0.0,11.49,7.74,"p",1491,1255,30,20],[-7.63,0.0,15.29,6.58,"p",1828,1255,40,17],[-3.11,0.0,6.25,2.49,"p",152,1310,16,6],[-3.91,0.0,7.85,10.71,"p",1400,1255,20,28],[-6.12,0.0,12.28,7.22,"p",1523,1255,32,19],[-8.04,0.0,16.11,2.64,"p",61,1310,42,7],[-3.07,0.0,6.18,2.49,"p",134,1310,16,6],[-6.42,0.0,12.87,9.63,"p",1422,1255,33,25]],"hair":[[[27.69,8.7,67.07,45.65,"h",1410,996,174,119],[27.69,8.7,67.07,45.65,"h",1234,996,174,119]],[[25.06,9.83,70.26,62.37,"h",0,832,183,162],[25.06,9.83,70.26,61.24,"h",185,832,183,159]],[[25.31,8.95,69.79,90.49,"h",1196,0,181,235],[25.31,8.95,69.79,87.85,"h",1379,0,181,228]],[[12.94,6.82,94.31,69.51,"h",651,471,245,181],[12.94,6.82,94.31,69.51,"h",404,471,245,181]],[[24.37,9.29,71.48,81.07,"h",1562,0,186,211],[24.37,9.29,71.48,80.85,"h",1750,0,186,210]],[[17.07,7.95,84.16,69.51,"h",0,471,219,181],[17.07,7.95,84.16,65.19,"h",1320,654,219,169]],[[25.15,4.38,74.02,56.36,"h",1514,832,192,147],[25.15,4.38,74.02,56.36,"h",1708,832,192,147]],[[27.22,8.7,65.75,42.08,"h",0,1144,171,109],[27.22,8.7,65.75,42.08,"h",1756,996,171,109]],[[18.92,7.33,84.81,67.16,"h",357,654,220,175],[18.92,7.33,84.81,67.16,"h",579,654,220,175]],[[28.28,-6.83,63.65,58.69,"h",616,832,165,153],[28.28,-6.83,63.65,58.69,"h",783,832,165,153]],[[21.02,11.89,78.15,39.26,"h",173,1144,203,102],[21.02,11.89,78.15,39.26,"h",378,1144,203,102]],[[22.61,-0.06,74.78,92.25,"h",804,0,194,240],[22.61,-0.06,74.78,92.25,"h",1000,0,194,240]],[[23.83,8.2,72.35,73.0,"h",180,275,188,190],[23.83,8.2,72.35,69.08,"h",1058,471,188,180]],[[26.11,7.62,67.99,45.98,"h",876,996,177,120],[26.11,7.62,67.99,45.98,"h",1055,996,177,120]],[[23.09,10.33,74.04,104.85,"h",0,0,193,273],[23.09,10.33,74.04,104.85,"h",195,0,193,273]],[[21.3,7.39,78.9,100.13,"h",390,0,205,260],[21.3,7.39,78.9,94.87,"h",597,0,205,247]],[[28.49,1.64,63.23,56.21,"h",177,996,164,146],[28.49,1.64,63.23,56.21,"h",343,996,164,146]],[[26.03,3.45,68.35,74.51,"h",0,275,178,194],[26.03,3.45,68.35,71.75,"h",370,275,178,187]]],"body":[[[28.75,84.82,62.59,57.01,"s",1349,832,163,148],[27.82,84.82,64.36,63.98,"p",1724,654,167,166]],[[28.83,84.82,62.64,37.17,"s",913,1144,163,97],[27.79,80.97,64.57,70.35,"p",1437,275,168,183]],[[26.37,84.82,67.42,56.21,"s",0,996,175,146],[25.28,83.73,69.6,71.46,"p",903,275,181,186]],[[28.75,117.86,62.65,7.03,"s",1625,1255,163,18],[27.71,84.82,64.74,70.12,"p",1777,275,168,182]],[[28.83,84.82,62.65,37.44,"s",1078,1144,163,97],[27.93,83.93,64.58,67.87,"p",187,654,168,176]],[[28.75,84.82,62.65,38.97,"s",748,1144,163,101],[27.7,83.92,64.74,70.14,"p",1607,275,168,182]],[[28.97,84.82,62.64,48.69,"s",711,996,163,127],[26.79,83.95,66.57,68.02,"p",1577,471,173,177]],[[28.83,84.82,62.65,39.34,"s",583,1144,163,102],[27.77,83.91,64.77,70.82,"p",1086,275,168,184]],[[28.9,84.82,62.64,36.64,"s",1243,1144,163,95],[27.87,79.65,64.71,71.8,"p",733,275,168,187]],[[29.99,84.82,62.64,35.55,"s",1573,1144,163,92],[28.97,83.95,64.68,65.7,"p",971,654,168,171]],[[26.32,84.82,67.36,58.59,"s",950,832,175,152],[25.2,83.86,69.6,71.83,"p",550,275,181,187]],[[28.68,84.82,62.64,36.31,"s",1408,1144,163,94],[27.64,83.93,64.58,67.11,"p",801,654,168,174]],[[54.65,84.82,10.85,7.44,"s",1557,1255,28,19],[25.05,83.89,69.6,69.44,"p",221,471,181,181]]],"wings":[[[24.2,86.64,15.81,16.74,"p",878,1255,41,44],[80.0,86.64,15.81,16.74,"p",835,1255,41,44]],[[21.41,86.28,21.39,19.59,"p",317,1255,56,51],[77.2,86.18,21.39,19.71,"p",459,1255,56,51]],[[19.08,77.92,26.97,33.88,"p",1810,1144,70,88],[73.95,77.08,26.97,34.97,"p",1738,1144,70,91]],[[16.76,73.18,32.09,43.54,"p",1586,996,83,113],[71.16,73.18,32.09,43.54,"p",1671,996,83,113]],[[11.64,67.71,38.13,51.75,"p",610,996,99,135],[70.23,67.71,38.13,51.75,"p",509,996,99,135]],[[7.92,63.77,41.85,56.8,"p",1238,832,109,148],[70.23,63.77,41.85,56.8,"p",1127,832,109,148]],[[4.2,62.22,46.5,59.97,"p",370,832,121,156],[69.3,62.72,46.5,59.34,"p",493,832,121,154]],[[-1.38,56.6,53.01,68.37,"p",1437,471,138,178],[68.37,57.17,53.01,67.64,"p",1752,471,138,176]]]};
 export const PARTS = {
-  face: { name: "얼굴형", n: 4 },
-  skin: { name: "피부색", n: 6 },
-  eyes: { name: "눈", n: 6 },
-  mouth: { name: "표정", n: 6 },
-  hair: { name: "머리 모양", n: 8 },
-  hairColor: { name: "머리색", n: 8 },
-  body: { name: "옷 세트", n: 6 }
+  face: { name: "얼굴형", n: D.face.length },
+  skin: { name: "피부색", n: 8 },
+  eyes: { name: "눈", n: D.eyes.length },
+  mouth: { name: "표정", n: D.mouth.length },
+  hair: { name: "머리 모양", n: D.hair.length },
+  hairColor: { name: "머리색", n: 12 },
+  body: { name: "옷 세트", n: D.body.length }
 };
 export const PART_ORDER = ["face", "skin", "eyes", "mouth", "hair", "hairColor", "body"];
-const SKIN = ["#ffe3cf", "#f8d0b0", "#eab48c", "#d39a6a", "#a8704a", "#7a4e33"];
-const HAIR = ["#3b2a20", "#6b4226", "#a86b3c", "#e8c170", "#e86f5a", "#8e6cd8", "#5b8def", "#ff8fb4"];
-const BODY = [
-  { name: "하늘 후드티", top: "#7fb2ff", dark: "#4f84e0", pants: "#4a5577", shoe: "#ffffff", kind: "hood" },
-  { name: "분홍 원피스", top: "#ff9ec0", dark: "#e7709c", pants: null, shoe: "#ff7aa2", kind: "dress" },
-  { name: "초록 체육복", top: "#5fd3a0", dark: "#2fa775", pants: "#2f8f66", shoe: "#ffffff", kind: "sport" },
-  { name: "노랑 멜빵바지", top: "#ffffff", dark: "#e6c24d", pants: "#ffd166", shoe: "#8a5a31", kind: "overall" },
-  { name: "남색 정장", top: "#3d4a7a", dark: "#28335c", pants: "#28335c", shoe: "#3b2a20", kind: "suit" },
-  { name: "보라 마법사 망토", top: "#a07cff", dark: "#7a55d8", pants: "#4b3d80", shoe: "#4b3d80", kind: "cape" }
-];
-export const BODY_NAMES = BODY.map((b) => b.name);
+const SKIN = ["#ffe8d8", "#fed1b1", "#f2bd96", "#e0a47a", "#c78a5c", "#a86f46", "#8a5634", "#6e4428"];
+const HAIR = ["#3a2a22", "#5c3a24", "#8a5a36", "#b0703e", "#e9c46a", "#f3e3bd", "#e2683c", "#ff8fb4", "#9a7ae0", "#5b8def", "#4fbf9f", "#b9bdc9"];
+export const BODY_NAMES = ["기본 티셔츠", "하늘 후드티", "분홍 원피스", "초록 체육복", "노랑 멜빵바지", "남색 정장", "보라 마법사 망토", "교복", "노랑 우비", "한복", "세일러복", "구름 잠옷", "별빛 히어로"];
 export const OPTION_LABELS = {
-  face: ["동글", "갸름", "네모", "말랑"],
-  skin: ["1", "2", "3", "4", "5", "6"],
-  eyes: ["초롱", "반짝", "웃음", "윙크", "졸림", "별"],
-  mouth: ["미소", "활짝", "고양이", "오!", "메롱", "씨익"],
-  hair: ["짧은 머리", "단발", "긴 머리", "양갈래", "곱슬", "삐죽", "포니테일", "똥머리"],
-  hairColor: ["흑갈색", "갈색", "밤색", "금발", "다홍", "보라", "파랑", "분홍"],
+  face: ["동글", "갸름", "네모", "뾰족", "말랑", "길쭉"],
+  skin: ["1", "2", "3", "4", "5", "6", "7", "8"],
+  eyes: ["초롱", "졸린", "웃는", "윙크", "별", "하트", "시크", "글썽", "또렷", "갈색", "점눈", "동글 안경", "큰 안경", "고양이", "쿨쿨"],
+  mouth: ["미소", "활짝", "고양이", "오!", "메롱", "이히히", "시무룩", "와!", "씨익", "우물쭈물", "살짝", "아앗"],
+  hair: ["짧은 머리", "단발", "긴 생머리", "양갈래", "옆머리", "곱슬", "삐죽", "바가지", "포니테일", "똥머리", "양쪽 똥머리", "올림머리", "옆으로 넘긴", "까까머리", "땋은 머리", "웨이브", "닭벼슬", "리본 단발"],
+  hairColor: ["흑갈색", "고동", "갈색", "밤색", "금발", "크림", "다홍", "분홍", "보라", "파랑", "민트", "은색"],
   body: BODY_NAMES
 };
 
@@ -57,121 +53,50 @@ export function cleanAvatar(a) {
   return out;
 }
 
+// 그림을 미리 받아 두기 (처음 한 번만 내려받고 이후에는 브라우저 저장본 사용)
+export function preloadAvatar() { const i = new Image(); i.src = IMG; }
+
+// 부품 한 조각: 묶음 그림에서 [sx sy sw sh] 부분만 잘라 (x,y,w,h)에 놓음
+function piece(it, sk, hr) {
+  const [x, y, w, h, k, sx, sy, sw, sh] = it;
+  const f = k === "s" ? sk : k === "h" ? hr : null;
+  const img = `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${sx} ${sy} ${sw} ${sh}" preserveAspectRatio="none" overflow="hidden"><image href="${IMG}" width="${D.W}" height="${D.H}"/></svg>`;
+  return f ? `<g filter="url(#${f})">${img}</g>` : img;
+}
+// 기본 그림 색(피부 #fed1b1, 머리 회색 #d4d4d4)을 고른 색으로 바꾸는 필터
+function tint(id, hex, base) {
+  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255];
+  const r = c.map((v, i) => (v / base[i]).toFixed(3));
+  return `<filter id="${id}" filterUnits="userSpaceOnUse" x="-60" y="-60" width="240" height="280" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${r[0]} 0 0 0 0 0 ${r[1]} 0 0 0 0 0 ${r[2]} 0 0 0 0 0 1 0"/></filter>`;
+}
+
 let seq = 0;
 // SVG 문자열 (viewBox 0 0 120 150)
 export function avatarSVG(av, score = 0, opts = {}) {
   const a = cleanAvatar(av), lv = opts.wing !== undefined ? opts.wing : wingLevel(score);
-  const id = "av" + (++seq);
-  const skin = SKIN[a.skin], skinD = shade(skin, -18), hair = HAIR[a.hairColor], hairD = shade(hair, -22), B = BODY[a.body];
+  const id = "av" + (++seq), sk = id + "s", hr = id + "h";
+  const P = (it) => piece(it, sk, hr);
   const p = [];
-  p.push(`<svg viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg" class="${opts.cls || "avatar"}" overflow="visible" role="img" aria-label="천사 캐릭터">`);
-  const WC = lv >= 6 ? ["#fff8d6", "#ffd166", "#f0a92e"] : lv === 5 ? ["#ffd1e1", "#cfe4ff", "#c8f3dc"] : lv >= 3 ? ["#ffffff", "#e6f0ff", "#c9dcff"] : ["#ffffff", "#f2f6ff", "#d6e6ff"];
-  p.push(`<defs><linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="1">${WC.map((c, i) => `<stop offset="${i / 2}" stop-color="${c}"/>`).join("")}</linearGradient>`
-    + `<radialGradient id="${id}g"><stop offset="0" stop-color="#ffe680" stop-opacity=".7"/><stop offset="1" stop-color="#ffe680" stop-opacity="0"/></radialGradient></defs>`);
-  p.push(`<ellipse cx="60" cy="146" rx="30" ry="3.5" fill="#000" opacity=".08"/>`);
-  p.push(wings(lv, id));
-  // 뒷머리
-  p.push(hairBack(a.hair, hair, hairD));
-  // 몸
-  p.push(body(B, skin, skinD));
-  // 머리(얼굴)
-  p.push(face(a.face, skin, skinD));
-  p.push(`<circle cx="44" cy="62" r="4.5" fill="#ff9ab5" opacity=".55"/><circle cx="76" cy="62" r="4.5" fill="#ff9ab5" opacity=".55"/>`);
-  p.push(eyes(a.eyes));
-  p.push(mouth(a.mouth));
-  p.push(hairFront(a.hair, hair, hairD));
+  p.push(`<svg viewBox="${opts.view || "0 0 120 150"}" xmlns="http://www.w3.org/2000/svg" class="${opts.cls || "avatar"}" overflow="${opts.view ? "hidden" : "visible"}" role="img" aria-label="천사 캐릭터">`);
+  p.push(`<defs>${tint(sk, SKIN[a.skin], [254, 209, 177])}${tint(hr, HAIR[a.hairColor], [212, 212, 212])}<radialGradient id="${id}g"><stop offset="0" stop-color="#ffe680" stop-opacity=".75"/><stop offset="1" stop-color="#ffe680" stop-opacity="0"/></radialGradient></defs>`);
+  p.push(`<ellipse cx="60" cy="148" rx="30" ry="3.5" fill="#000" opacity=".08"/>`);
+  if (lv >= 7) p.push(`<ellipse cx="60" cy="92" rx="66" ry="44" fill="url(#${id}g)"/>`);
+  D.wings[lv].forEach((it) => p.push(P(it)));
+  const H = D.hair[a.hair], F = D.face[a.face], E = D.eyes[a.eyes];
+  p.push(P(H[0]));                         // 뒷머리(얼굴 뒤)
+  D.body[a.body].forEach((it) => p.push(P(it)));
+  p.push(P(F.i));
+  const at = (pos, list) => `<g transform="translate(${pos[0]} ${pos[1]}) scale(${F.k})">${list.map(P).join("")}</g>`;
+  if (E.s) p.push(at([(F.el[0] + F.er[0]) / 2, (F.el[1] + F.er[1]) / 2], E.p[0]));
+  else { p.push(at(F.el, E.p[0])); p.push(at(F.er, E.p[1])); }
+  p.push(at(F.m, [D.mouth[a.mouth]]));
+  p.push(P(H[1]));                         // 앞머리(얼굴 위)
   // 후광
-  p.push(`<ellipse cx="60" cy="10" rx="17" ry="4.6" fill="none" stroke="#ffd166" stroke-width="3.4"/>`);
+  p.push(`<ellipse cx="60" cy="7" rx="17" ry="4.6" fill="none" stroke="#ffd166" stroke-width="3.4"/>`);
   // 반짝이: 단계가 높을수록 많이
-  const SP = [[16, 30, 1], [104, 22, .8], [10, 74, .7], [110, 70, .9], [22, 112, .6], [100, 108, .7]];
+  const SP = [[12, 30, 1], [108, 22, .8], [6, 74, .7], [114, 70, .9], [16, 112, .6], [104, 108, .7]];
   const nSp = lv >= 7 ? 6 : lv >= 6 ? 4 : lv >= 3 ? 2 : 0;
   if (nSp) p.push(`<g fill="${lv >= 6 ? "#ffcc33" : "#a9c6ff"}">` + SP.slice(0, nSp).map(([x, y, k]) => `<path transform="translate(${x} ${y}) scale(${k})" d="M0 -5l1.6 3.4 3.4 1.6-3.4 1.6L0 5l-1.6-3.4-3.4-1.6 3.4-1.6z"/>`).join("") + `</g>`);
   p.push(`</svg>`);
-  return p.join("");
-}
-function shade(hex, amt) {
-  const n = parseInt(hex.slice(1), 16);
-  const c = (v) => Math.max(0, Math.min(255, v + amt));
-  return "#" + [c(n >> 16), c((n >> 8) & 255), c(n & 255)].map((v) => v.toString(16).padStart(2, "0")).join("");
-}
-function wings(lv, id) {
-  if (lv === 0) return `<g fill="url(#${id}w)" stroke="#c9dafc" stroke-width="1.5"><ellipse cx="43" cy="96" rx="5" ry="7" transform="rotate(-25 43 96)"/><ellipse cx="77" cy="96" rx="5" ry="7" transform="rotate(25 77 96)"/></g>`;
-  const s = [0, 0.5, 0.62, 0.74, 0.86, 0.96, 1.06, 1.14][lv];
-  const edge = lv >= 6 ? "#e9a92e" : lv === 5 ? "#c7b5ff" : "#c9dafc";
-  const feather = lv >= 6 ? "#f0c35a" : lv === 5 ? "#ffffff" : "#d6e2fb";
-  const one = `<path d="M0 0 C-14 -22 -40 -26 -46 -12 C-50 -2 -40 4 -28 4 C-40 8 -44 18 -34 22 C-24 26 -12 16 -4 8 Z" fill="url(#${id}w)" stroke="${edge}" stroke-width="2"/>`
-    + (lv >= 2 ? `<path d="M-10 -4 C-20 -12 -30 -14 -36 -10" stroke="${feather}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : "")
-    + (lv >= 3 ? `<path d="M-12 4 C-22 4 -30 8 -32 12" stroke="${feather}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` : "")
-    + (lv >= 4 ? `<path d="M-8 -12 C-16 -20 -26 -22 -32 -20 M-14 12 C-20 14 -24 18 -26 20" stroke="${feather}" stroke-width="1.4" fill="none" stroke-linecap="round"/>` : "");
-  const glow = lv >= 7 ? `<ellipse cx="60" cy="88" rx="62" ry="40" fill="url(#${id}g)"/>` : "";
-  return glow + `<g transform="translate(46 92) scale(${s})">${one}</g><g transform="translate(74 92) scale(${-s} ${s})">${one}</g>`;
-}
-function face(k, skin, skinD) {
-  const st = `fill="${skin}" stroke="${skinD}" stroke-width="1.6"`;
-  const ears = `<ellipse cx="31" cy="52" rx="4.5" ry="6" ${st}/><ellipse cx="89" cy="52" rx="4.5" ry="6" ${st}/>`;
-  if (k === 1) return ears + `<ellipse cx="60" cy="50" rx="27" ry="31" ${st}/>`;
-  if (k === 2) return ears + `<rect x="32" y="22" width="56" height="56" rx="20" ${st}/>`;
-  if (k === 3) return ears + `<path d="M60 80 C38 80 32 64 32 50 C32 32 44 22 60 22 C76 22 88 32 88 50 C88 64 82 80 60 80 Z" ${st}/>`;
-  return ears + `<circle cx="60" cy="51" r="29" ${st}/>`;
-}
-function eyes(k) {
-  const ink = "#3b3f58";
-  if (k === 1) return `<g><circle cx="49" cy="52" r="6" fill="${ink}"/><circle cx="71" cy="52" r="6" fill="${ink}"/><circle cx="51" cy="50" r="2.2" fill="#fff"/><circle cx="73" cy="50" r="2.2" fill="#fff"/><circle cx="47.5" cy="54.5" r="1" fill="#fff"/><circle cx="69.5" cy="54.5" r="1" fill="#fff"/></g>`;
-  if (k === 2) return `<g fill="none" stroke="${ink}" stroke-width="2.6" stroke-linecap="round"><path d="M44 53 q5 -6 10 0"/><path d="M66 53 q5 -6 10 0"/></g>`;
-  if (k === 3) return `<g><circle cx="49" cy="52" r="4" fill="${ink}"/><circle cx="50.3" cy="50.6" r="1.4" fill="#fff"/><path d="M66 52 l10 -3 M66 52 l10 3" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/></g>`;
-  if (k === 4) return `<g stroke="${ink}" stroke-width="2.6" stroke-linecap="round"><path d="M44 53 h10"/><path d="M66 53 h10"/></g>`;
-  if (k === 5) return `<g fill="#ffd166" stroke="#e9b23c" stroke-width="1"><path d="M49 46l1.8 4 4.4.5-3.3 3 1 4.3-3.9-2.3-3.9 2.3 1-4.3-3.3-3 4.4-.5z"/><path d="M71 46l1.8 4 4.4.5-3.3 3 1 4.3-3.9-2.3-3.9 2.3 1-4.3-3.3-3 4.4-.5z"/></g>`;
-  return `<g><circle cx="49" cy="52" r="4" fill="${ink}"/><circle cx="71" cy="52" r="4" fill="${ink}"/><circle cx="50.3" cy="50.6" r="1.4" fill="#fff"/><circle cx="72.3" cy="50.6" r="1.4" fill="#fff"/></g>`;
-}
-function mouth(k) {
-  const ink = "#3b3f58";
-  if (k === 1) return `<path d="M52 63 q8 10 16 0 z" fill="#ff7a8a" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/>`;
-  if (k === 2) return `<path d="M53 63 q3.5 3 7 0 q3.5 3 7 0" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/>`;
-  if (k === 3) return `<ellipse cx="60" cy="65" rx="3.4" ry="4" fill="#ff7a8a" stroke="${ink}" stroke-width="1.8"/>`;
-  if (k === 4) return `<g><path d="M54 63 q6 5 12 0" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/><path d="M60 65 q4 0 4 4 q-4 2 -4 -4" fill="#ff7a8a"/></g>`;
-  if (k === 5) return `<path d="M52 62 q8 7 16 0" fill="#fff" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>`;
-  return `<path d="M54 63 q6 5 12 0" fill="none" stroke="${ink}" stroke-width="2.4" stroke-linecap="round"/>`;
-}
-function hairBack(k, c, d) {
-  const st = `fill="${c}" stroke="${d}" stroke-width="1.5"`;
-  if (k === 2) return `<path d="M30 48 C30 22 90 22 90 48 L92 96 C80 102 40 102 28 96 Z" ${st}/>`;
-  if (k === 3) return `<g ${st}><ellipse cx="22" cy="66" rx="9" ry="19"/><ellipse cx="98" cy="66" rx="9" ry="19"/></g>`;
-  if (k === 6) return `<path d="M84 40 C104 44 102 82 92 92 C96 72 92 56 82 50 Z" ${st}/>`;
-  if (k === 7) return `<circle cx="60" cy="13" r="11" ${st}/>`;
-  if (k === 1) return `<path d="M30 48 C30 22 90 22 90 48 L90 74 C78 78 42 78 30 74 Z" ${st}/>`;
-  return "";
-}
-function hairFront(k, c, d) {
-  const st = `fill="${c}" stroke="${d}" stroke-width="1.5" stroke-linejoin="round"`;
-  // 머리 윗부분(모자처럼 덮는 모양) + 앞머리 끝선
-  const cap = (edge, side = 58) => `<path d="M29 ${side} C24 14 96 14 91 ${side} ${edge} Z" ${st}/>`;
-  const shine = `<path d="M44 27 q8 -5 16 -4" stroke="#fff" stroke-width="2.4" fill="none" opacity=".35" stroke-linecap="round"/>`;
-  if (k === 0) return cap("C88 44 82 40 74 40 C66 43 56 41 50 38 C42 41 34 44 29 56", 54) + shine;
-  if (k === 1) return cap("C86 46 80 36 70 36 C60 44 46 44 40 40 C34 44 31 50 29 60", 62) + shine;
-  if (k === 2) return cap("C87 46 74 34 62 34 C58 40 50 40 46 38 C38 42 32 48 29 62", 64) + shine;
-  if (k === 3) return `<g>${cap("C86 44 78 40 70 41 C64 43 56 43 50 41 C42 40 34 44 29 56", 56)}<circle cx="27" cy="52" r="3.4" fill="#ff7aa2"/><circle cx="93" cy="52" r="3.4" fill="#ff7aa2"/></g>` + shine;
-  if (k === 4) return `<g ${st}><circle cx="33" cy="48" r="8"/><circle cx="87" cy="48" r="8"/><circle cx="36" cy="34" r="10"/><circle cx="84" cy="34" r="10"/><circle cx="48" cy="25" r="11"/><circle cx="72" cy="25" r="11"/><circle cx="60" cy="22" r="11"/><circle cx="47" cy="39" r="7"/><circle cx="60" cy="38" r="7"/><circle cx="73" cy="39" r="7"/></g>`;
-  if (k === 5) return `<path d="M29 56 C26 36 30 30 34 28 L33 14 L44 24 L48 8 L56 21 L62 6 L68 21 L76 9 L79 24 L88 15 L87 30 C92 34 94 42 91 56 C88 46 82 41 74 41 C66 44 54 44 46 41 C38 42 32 47 29 56 Z" ${st}/>`;
-  if (k === 6) return `<g>${cap("C88 44 80 39 70 39 C62 41 52 41 46 38 C38 40 32 46 29 56", 56)}<circle cx="88" cy="40" r="3.4" fill="#ffd166"/></g>` + shine;
-  if (k === 7) return `<g>${cap("C88 44 80 40 70 40 C62 42 54 42 48 40 C40 41 33 46 29 56", 56)}<path d="M54 14 q6 -4 12 0" stroke="${d}" stroke-width="1.5" fill="none"/></g>` + shine;
-  return "";
-}
-function body(B, skin, skinD) {
-  const p = [];
-  const arm = (x, flip) => `<path d="M${x} 86 q${flip ? 10 : -10} 10 ${flip ? 12 : -12} 22" stroke="${B.kind === "suit" || B.kind === "cape" ? B.top : B.kind === "overall" ? "#ffffff" : B.top}" stroke-width="9" stroke-linecap="round" fill="none"/><circle cx="${x + (flip ? 12 : -12)}" cy="109" r="5.2" fill="${skin}" stroke="${skinD}" stroke-width="1.4"/>`;
-  // 다리 + 신발
-  const legC = B.pants || skin;
-  p.push(`<rect x="48" y="112" width="9" height="24" rx="4.5" fill="${legC}"/><rect x="63" y="112" width="9" height="24" rx="4.5" fill="${legC}"/>`);
-  p.push(`<ellipse cx="51.5" cy="138" rx="7.5" ry="4.2" fill="${B.shoe}" stroke="#c9cfe0" stroke-width="1.2"/><ellipse cx="68.5" cy="138" rx="7.5" ry="4.2" fill="${B.shoe}" stroke="#c9cfe0" stroke-width="1.2"/>`);
-  if (B.kind === "cape") p.push(`<path d="M42 82 L30 128 C48 134 72 134 90 128 L78 82 Z" fill="${B.dark}"/>`);
-  p.push(arm(42, false), arm(78, true));
-  // 몸통
-  if (B.kind === "dress") p.push(`<path d="M46 80 L74 80 L84 120 C70 126 50 126 36 120 Z" fill="${B.top}" stroke="${B.dark}" stroke-width="1.6"/><path d="M40 112 C52 118 68 118 80 112" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/>`);
-  else p.push(`<rect x="42" y="78" width="36" height="38" rx="13" fill="${B.top}" stroke="${B.dark}" stroke-width="1.6"/>`);
-  if (B.kind === "hood") p.push(`<path d="M48 80 q12 10 24 0" stroke="${B.dark}" stroke-width="3" fill="none"/><rect x="52" y="98" width="16" height="9" rx="4" fill="${B.dark}" opacity=".5"/>`);
-  if (B.kind === "sport") p.push(`<path d="M46 82 L46 114 M74 82 L74 114" stroke="#fff" stroke-width="3"/><path d="M56 80 L60 90 L64 80" stroke="#fff" stroke-width="2.2" fill="none"/>`);
-  if (B.kind === "overall") p.push(`<rect x="45" y="94" width="30" height="22" rx="7" fill="${B.pants}" stroke="${B.dark}" stroke-width="1.5"/><path d="M48 80 L50 96 M72 80 L70 96" stroke="${B.dark}" stroke-width="3.2"/><circle cx="50" cy="96" r="1.8" fill="#8a5a31"/><circle cx="70" cy="96" r="1.8" fill="#8a5a31"/>`);
-  if (B.kind === "suit") p.push(`<path d="M52 79 L60 92 L68 79 Z" fill="#fff"/><path d="M58 84 L60 98 L62 84 Z" fill="#ff7aa2"/><path d="M52 79 L58 96 M68 79 L62 96" stroke="${B.dark}" stroke-width="2"/>`);
-  if (B.kind === "cape") p.push(`<circle cx="60" cy="82" r="3" fill="#ffd166"/><path d="M48 96 L60 100 L72 96" stroke="#ffd166" stroke-width="2" fill="none"/>`);
   return p.join("");
 }
