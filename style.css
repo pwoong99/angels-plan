@@ -508,3 +508,38 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
   .mascot { width: 84px; height: 76px; }
   .logo h1 { font-size: 2.5rem; }
 }
+
+/* ===== 큐브 세기 ===== */
+.cube-svg { display: block; width: 100%; height: 100%; }
+.cube-wrap { width: min(560px, 92vw); height: min(380px, 46vh); background: #fff; border: 3px solid var(--line); border-radius: 24px; padding: 10px; }
+.cube-wrap:empty { display: none; }
+.chip.prog { background: #fff4c7; color: #9a6a00; }
+.cube-ask { display: flex; align-items: center; gap: 10px; font-family: "Jua"; font-size: 1.4rem; color: var(--ink); }
+.cube-ask b { min-width: 3.2ch; text-align: center; font-size: 2.2rem; color: var(--blue); background: #fff; border: 3px solid var(--line); border-radius: 16px; padding: 2px 14px; }
+.keypad { display: grid; grid-template-columns: repeat(3, 76px); gap: 8px; }
+.keypad button { height: 58px; border-radius: 16px; border: 2.5px solid var(--line); background: #fff; font-family: "Jua"; font-size: 1.6rem; color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 var(--line); }
+.keypad button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+.keypad button.ok { background: var(--blue); color: #fff; border-color: var(--blue); font-size: 1.25rem; }
+.keypad button.del { background: #fff4f6; }
+.keypad button:disabled { opacity: .4; }
+.cube-review { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; width: 100%; }
+.cube-review .cr, .t-cubes .tc-q { background: #fff; border: 2.5px solid var(--line); border-radius: 16px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .85rem; }
+.cube-review .cr.ok { border-color: #8fe0b8; background: #f1fff7; }
+.cube-review .cr.bad { border-color: #ffc2c8; background: #fff6f7; }
+.cube-review .cr small { color: var(--muted); font-weight: 700; }
+.cr-pic { width: 100%; height: 90px; }
+.t-cubes { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 8px 0; }
+#cbReview { width: min(760px, 94vw); }
+.cube-top { display: grid; gap: 3px; width: max-content; margin: 22px auto; transform: rotate(45deg) scaleY(.92); }
+.cube-top span { width: 30px; height: 30px; display: grid; place-items: center; background: #fff4c7; border: 2px solid #e8c86a; border-radius: 6px; font-family: "Jua"; font-size: 1.05rem; }
+.cube-top span > i { display: inline-block; transform: rotate(-45deg); font-style: normal; }
+.cube-top span.z { background: #f3f5fa; border-color: #dde3ee; }
+.cp-top, .ex-cube-top { text-align: center; color: var(--muted); font-weight: 700; }
+.cp-top:empty { display: none; }
+.ex-cube { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.ex-cube .cube-svg.ex { width: 260px; height: 220px; }
+#cubePractice .practice-card { align-items: center; }
+#cubePractice .cube-wrap { height: min(320px, 40vh); }
+.bubble.ok { color: var(--mint-d); }
+.bubble.bad { color: var(--red); }
+.porong.mini { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; }

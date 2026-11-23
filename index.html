@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v2.0">
+<link rel="stylesheet" href="style.css?v=v2.1">
 </head>
 <body>
 
@@ -152,6 +152,7 @@
       <div class="prac-btns">
         <button class="btn sun big-ish" id="practiceBtn">🧩 울타리치기 연습</button>
         <button class="btn sun big-ish" id="wgPracBtn">🧱 벽바둑 AI와 연습</button>
+        <button class="btn sun big-ish" id="cubePracBtn">🧊 큐브 세기 연습</button>
       </div>
     </div>
     <div class="lobby-grid">
@@ -168,8 +169,9 @@
         </div>
       </div>
       <div class="card" id="stAnswerCard" hidden>
-        <h3>✅ 이번 문제 정답</h3>
+        <h3 id="stAnswerTitle">✅ 이번 문제 정답</h3>
         <svg id="stAnswerBoard" class="board small"></svg>
+        <div id="stCubeAns"></div>
       </div>
       <div class="card">
         <h3>🏆 우리 반 순위</h3>
@@ -185,6 +187,7 @@
         <div class="how-btns">
           <button class="btn ghost how-btn" data-how="fence">🧩 울타리치기 방법</button>
           <button class="btn ghost how-btn" data-how="wallgo">🧱 벽바둑 1 방법</button>
+          <button class="btn ghost how-btn" data-how="cube">🧊 큐브 세기 방법</button>
         </div>
       </div>
     </div>
@@ -205,6 +208,18 @@
     </div>
     <p id="stGameMsg" class="game-msg"></p>
    </div>
+   <div id="cubeArea" class="game-area hidden">
+    <div class="game-top">
+      <span class="chip level" id="cbLevel"></span>
+      <span class="chip prog" id="cbProg"></span>
+      <span class="timer" id="cbTimer">0:00</span>
+    </div>
+    <div class="cube-wrap" id="cbPic"></div>
+    <div class="cube-ask" id="cbAsk"><span>큐브는 모두</span><b id="cbIn">?</b><span>개</span></div>
+    <div class="keypad" id="cbPad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="del" class="del">⌫</button><button data-k="0">0</button><button data-k="ok" class="ok">확인</button></div>
+    <p id="cbMsg" class="game-msg"></p>
+    <div id="cbReview" class="hidden"></div>
+   </div>
    <div id="wgArea" class="game-area hidden">
     <div class="game-top">
       <span class="wg-vs" id="wgVs"></span>
@@ -215,6 +230,23 @@
    </div>
   </div>
 </section>
+
+<!-- ===== 큐브 세기 연습 ===== -->
+<div id="cubePractice" class="overlay hidden">
+  <div class="practice-card">
+    <div class="pr-head">
+      <h2>🧊 큐브 세기 연습</h2>
+      <button class="btn ghost small" id="cpClose">닫기 ✕</button>
+    </div>
+    <div class="pr-levels" id="cpLevels"></div>
+    <div class="pr-coach"><img class="porong mini" src="img/porong-oh.jpg" alt="포롱이"><div class="bubble" id="cpMsg"></div></div>
+    <div class="cube-wrap" id="cpPic"></div>
+    <div class="cp-top" id="cpTop"></div>
+    <div class="cube-ask"><span>큐브는 모두</span><b id="cpIn">?</b><span>개</span></div>
+    <div class="keypad" id="cpPad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="del" class="del">⌫</button><button data-k="0">0</button><button data-k="ok" class="ok">확인</button></div>
+    <button class="btn sun big hidden" id="cpNext">🔄 다음 문제</button>
+  </div>
+</div>
 
 <!-- ===== 혼자 연습하기 ===== -->
 <div id="practice" class="overlay hidden">
@@ -293,6 +325,17 @@
             <small>(30초씩)</small>
           </div>
         </div>
+        <div id="cubePanel" class="hidden">
+          <div id="cubeLevelBtns" class="level-btns"></div>
+          <div class="time-row">
+            <span>⏱ 제한 시간(5문제)</span>
+            <button class="btn round" id="ctimeMinus">−</button>
+            <b id="ctimeLabel">1:00</b>
+            <button class="btn round" id="ctimePlus">＋</button>
+            <small>(10초씩)</small>
+          </div>
+          <p class="hint">스타트를 누르면 고른 단계에서 아직 안 나온 문제 5개가 모든 학생에게 똑같이 나가요. 5개를 모두 맞히면 끝낸 순서대로 보너스, 일부만 맞히면 맞힌 만큼 점수를 받아요.</p>
+        </div>
         <div id="wgPanel" class="hidden">
           <div class="time-row">
             <span>⏱ 한 수 시간</span>
@@ -321,6 +364,7 @@
           <span class="timer" id="tTimer"></span>
         </div>
         <div class="board-wrap"><svg id="tBoard" class="board"></svg></div>
+        <div id="tCubes" class="t-cubes hidden"></div>
         <button class="btn ghost hidden" id="answerBtn">✅ 정답 보기</button>
       </div>
     </div>
@@ -361,6 +405,7 @@
         <div class="ex-demo" id="exDemo">
           <svg id="exFence" class="board ex-board"></svg>
           <svg id="exWall" class="board ex-board wg"></svg>
+          <div id="exCube" class="ex-cube" style="display:none"></div>
           <div id="exExtra" class="ex-extra"></div>
         </div>
       </div>
@@ -483,6 +528,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v2.0"></script>
+<script type="module" src="app.js?v=v2.1"></script>
 </body>
 </html>
