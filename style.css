@@ -469,6 +469,20 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .rank-list li { padding: 5px 10px; }
 .rank-list .nm small { display: block; font-size: .72rem; color: var(--muted); font-weight: 700; }
 
+/* 벽바둑 3·4번째 편 */
+.wg-cell.own-c { fill: #d3f5e4; stroke: #a6ecc9; }
+.wg-cell.own-d { fill: #fff0c7; stroke: #ffe3a3; }
+.wg-wall.side-c .wg-brick { stroke: #17704c; }
+.wg-wall.side-d .wg-brick { stroke: #9e6a00; }
+.wg-ghost.side-c { stroke: var(--mint); } .wg-ghost.side-d { stroke: #ffb020; }
+.wg-tag.side-c, .mc-p.side-c { background: #dcf6e9; color: var(--mint-d); }
+.wg-tag.side-d, .mc-p.side-d { background: #fff2cc; color: #9e6a00; }
+.vs-one { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 999px; }
+.vs-one.turn { box-shadow: 0 0 0 3px var(--sun); background: #fffbea; }
+.vs-x { font-family: "Jua"; color: var(--muted); font-weight: 400; }
+.pr-gap { width: 10px; }
+#wgSizeBtns { margin: 0; }
+
 /* 축하 꽃가루 */
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
 #confetti i { position: absolute; top: -20px; width: 10px; height: 14px; border-radius: 3px; animation: fall linear forwards; }

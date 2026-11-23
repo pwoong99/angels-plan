@@ -114,15 +114,17 @@ service cloud.firestore {
         );
       }
 
-      // 벽바둑 대결: 선생님이 만들고, 대결하는 두 학생만 수를 둘 수 있어요
+      // 벽바둑 대결(2~4명): 선생님이 만들고, 그 대결에 들어간 학생만 수를 둘 수 있어요
       match /matches/{mid} {
         allow read: if signedIn();
         allow create, delete: if canManage();
         allow update: if canManage() || (
           signedIn()
-          && (playerUid(resource.data.a) == request.auth.uid || playerUid(resource.data.b) == request.auth.uid)
+          && (playerUid(resource.data.a) == request.auth.uid || playerUid(resource.data.b) == request.auth.uid
+              || ('c' in resource.data && playerUid(resource.data.c) == request.auth.uid)
+              || ('d' in resource.data && playerUid(resource.data.d) == request.auth.uid))
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['stones', 'walls', 'turn', 'phase', 'placeNo', 'moveNo', 'deadline', 'last', 'scoreA', 'scoreB', 'winner', 'endedAt'])
+               .hasOnly(['stones', 'walls', 'turn', 'phase', 'placeNo', 'moveNo', 'deadline', 'last', 'scoreA', 'scoreB', 'scores', 'ranks', 'winner', 'endedAt'])
           && resource.data.phase != 'done'
         );
       }

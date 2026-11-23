@@ -6,12 +6,12 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.8";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.8";
-import * as WG from "./wallgo.js?v=v1.8";
-import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.8";
+import { PUZZLES } from "./puzzles.js?v=v1.9";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.9";
+import * as WG from "./wallgo.js?v=v1.9";
+import { avatarSVG, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v1.9";
 
-const VERSION = "v1.8";
+const VERSION = "v1.9";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -28,7 +28,7 @@ const auth = getAuth(fbApp);
 // ---------- 게임 목록 ----------
 const GAMES = {
   fence: { name: "울타리치기", icon: "🧩", desc: "숫자를 보고 하나의 닫힌 울타리 완성하기 · 개인전", team: false },
-  wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2명씩 짝지어 1:1 대결 · 벽을 세워 내 땅 넓히기", team: false }
+  wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2~4명이 한 조로 대결 · 벽을 세워 내 땅 넓히기", team: false }
 };
 // 울타리치기 단계: 연습1·연습2(3×3) → 1~8단계(4×4~7×7)
 const DEFAULT_TIMES = [60, 90, 120, 120, 180, 180, 240, 240, 360, 360];
@@ -174,6 +174,12 @@ function resultText(res) {
   if (res.game === "wallgo") {
     const sc = res.my !== undefined ? ` (${res.my}:${res.opp})` : "";
     if (res.outcome === "bye") return { ok: true, big: "🍀 부전승!", sm: `+${res.points}점 · 이번 라운드는 짝이 없어서 승리로 쳐요` };
+    if (res.n > 2) {
+      const land = res.my !== undefined ? ` · 내 땅 ${res.my}칸` : "";
+      if (res.outcome === "win") return { ok: true, big: `🏆 ${res.n}명 중 1등!`, sm: `+${res.points}점${land}` };
+      if (res.outcome === "draw") return { ok: true, big: `🥈 ${res.n}명 중 ${res.rank}등`, sm: `+${res.points}점${land}` };
+      return { ok: false, big: `😢 ${res.n}명 중 ${res.rank}등`, sm: `참여 점수 +${res.points}점${land}` };
+    }
     if (res.outcome === "win") return { ok: true, big: `🏆 승리!${sc}`, sm: `${esc(res.vs || "")}에게 이겼어요 · +${res.points}점` };
     if (res.outcome === "draw") return { ok: true, big: `🤝 무승부${sc}`, sm: `${esc(res.vs || "")}와 비겼어요 · +${res.points}점` };
     return { ok: false, big: `😢 아쉽게 졌어요${sc}`, sm: `${esc(res.vs || "")}에게 졌지만 참여 점수 +${res.points}점` };
@@ -225,7 +231,7 @@ const GUIDE_IMG = {
 };
 const FENCE_DEMO = (() => { const L = PUZZLES[0], P = L.puzzles[0]; return { w: L.w, h: L.h, c: P.c, ans: decodeAnswer(P.a) }; })();
 const WG_DEMO = (() => {
-  let m = { phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, turnSec: DEFAULT_TURN, stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls() };
+  let m = WG.newMatch(2, { turnSec: DEFAULT_TURN });
   const snaps = { init: m };
   while (m.phase === "place") m = { ...m, ...WG.randomAction(m) };
   snaps.placed = m;
@@ -267,16 +273,16 @@ const EXPLAIN = {
       show: (r) => { noBoard(); const P = { ...DEFAULT_PTS, ...((r && r.pts) || {}) }; return pill(`맞히면 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill(P.mult ? "어려운 단계 ×3까지" : "배율 없음", "p") + pill("오답·시간 초과 0점"); } }
   ],
   wallgo: [
-    { title: "🧱 벽바둑 1이란?", text: "친구와 1:1로 겨루는 땅따먹기 게임이에요.\n7×7 판에서 각자 말 4개를 써요. 처음엔 2개씩 놓여 있어요.", show: () => wallShow(WG_DEMO.init) },
-    { title: "말 놓기", text: "나머지 말 2개는 번갈아 빈칸에 직접 놓아요.\n순서: 분홍 → 파랑 → 파랑 → 분홍", show: () => wallShow(WG_DEMO.placed) },
+    { title: "🧱 벽바둑 1이란?", text: "친구들과 2~4명이 겨루는 땅따먹기 게임이에요. 7×7 판을 써요.\n2명이면 말 4개씩, 3~4명이면 말 2개씩!", show: () => wallShow(WG_DEMO.init) },
+    { title: "말 놓기", text: "처음엔 정해진 자리에 말이 놓여 있어요. 나머지 말은 순서대로 빈칸에 직접 놓아요.\n2명: 분홍 → 파랑 → 파랑 → 분홍 · 3~4명: 한 개씩 거꾸로 순서", show: () => wallShow(WG_DEMO.placed) },
     { title: "말 움직이기", text: "내 차례엔 내 말 하나를 0~2칸 움직여요.\n상하좌우로, 꺾어서 가도 돼요. 초록 칸이 갈 수 있는 곳!",
       show: () => wallShow(WG_DEMO.placed, { active: true, sel: WG_DEMO.placed.stones[WG_DEMO.placed.turn][0] }) },
     { title: "벽 세우기", text: "움직인 칸의 둘레 중 한 곳에 벽을 꼭 세워요. (주황 점선)\n벽과 다른 말은 지나갈 수 없고, 세운 벽은 없앨 수 없어요.",
       show: () => { const m = WG_DEMO.mid, lm = WG.legalMoves(m, m.turn)[0]; wallShow(m, lm ? { active: true, sel: lm.from, dest: lm.to } : {}); } },
-    { title: "끝과 승부", text: "서로 다른 색 말이 같은 공간에 없으면 끝!\n내 말만 있는 공간의 칸 수가 내 땅이에요. 땅이 넓은 쪽이 이겨요.",
-      show: () => { const m = WG_DEMO.end; wallShow(m, { regions: true }); return pill(`분홍 땅 ${m.scoreA}칸`, "p") + pill(`파랑 땅 ${m.scoreB}칸`); } },
+    { title: "끝과 승부", text: "서로 다른 색 말이 같은 공간에 없으면 끝!\n내 말만 있는 공간의 칸 수가 내 땅이에요. 땅이 넓은 순서로 등수가 정해져요.",
+      show: () => { const m = WG_DEMO.end; wallShow(m, { regions: true }); return pill(`분홍 땅 ${m.scores.a}칸`, "p") + pill(`파랑 땅 ${m.scores.b}칸`); } },
     { title: "시간과 점수", text: "한 수마다 제한 시간이 있어요. 시간이 지나면 아무 곳에나 저절로 둬요.\n져도 참여 점수를 받아요!",
-      show: (r) => { noBoard(); const W = { ...DEFAULT_WG, ...((r && r.wg) || {}) }; return pill(`한 수 ${(r && r.turnSec) || DEFAULT_TURN}초`) + pill(`승리 ${W.win}점`, "g") + pill(`무승부 ${W.draw}점`, "y") + pill(`패배 ${W.lose}점`, "p") + pill("홀수면 1명 부전승"); } }
+      show: (r) => { noBoard(); const W = { ...DEFAULT_WG, ...((r && r.wg) || {}) }; return pill(`한 수 ${(r && r.turnSec) || DEFAULT_TURN}초`) + pill(`1등 ${W.win}점`, "g") + pill(`중간 등수·무승부 ${W.draw}점`, "y") + pill(`꼴찌 ${W.lose}점`, "p"); } }
   ]
 };
 let exKey = null;
@@ -696,29 +702,32 @@ function renderStudentWallgo(r, me, res) {
   }
   const m = ST.match;
   if (!m) { status.textContent = "대결 준비 중…"; return; }
-  const side = mt.side, opp = WG.other(side);
-  const myName = side === "a" ? m.a : m.b, oppName = side === "a" ? m.b : m.a;
-  const oppP = ST.players.find((p) => p.id === oppName) || { name: oppName };
-  vs.innerHTML = `<span class="vs-av">${avHTML(me)}</span><span class="wg-tag side-${side}">나 ${esc(myName)}</span> <b>VS</b> <span class="wg-tag side-${opp}">${esc(oppName)}</span><span class="vs-av">${avHTML(oppP)}</span>`;
+  const side = mt.side, sides = WG.sidesOf(m);
+  vs.innerHTML = sides.map((sd) => {
+    const nm = m[sd], p = sd === side ? me : (ST.players.find((x) => x.id === nm) || { name: nm });
+    const turn = m.phase !== "done" && m.turn === sd ? " turn" : "";
+    return `<span class="vs-one${turn}"><span class="vs-av">${avHTML(p)}</span><span class="wg-tag side-${sd}">${sd === side ? "나 " : ""}${esc(nm)}</span></span>`;
+  }).join(`<b class="vs-x">VS</b>`);
   const myTurn = m.phase !== "done" && m.turn === side;
   wgBoard.render(m, side, { active: myTurn, showRegions: m.phase === "done" });
   if (m.phase === "done") {
-    const my = side === "a" ? m.scoreA : m.scoreB, op = side === "a" ? m.scoreB : m.scoreA;
+    const sc = m.scores || { a: m.scoreA, b: m.scoreB };
     const t = res ? resultText(res) : null;
-    status.innerHTML = t ? `${esc(t.big)} <small>${t.sm}</small>` : `경기 끝! 내 땅 ${my}칸 : 상대 땅 ${op}칸 · 점수 계산 중…`;
-    status.classList.add(m.winner === side || m.winner === "draw" ? "ok" : "bad");
+    status.innerHTML = t ? `${esc(t.big)} <small>${t.sm}</small>` : `경기 끝! 내 땅 ${sc[side]}칸 · 점수 계산 중…`;
+    status.classList.add(WG.outcomeOf(m, side) === "lose" ? "bad" : "ok");
     $("wgTimer").textContent = "";
     if (res) celebrate(res);
     return;
   }
   if (m.phase === "place") {
     const left = m.stones[side].filter((c) => c < 0).length;
-    status.textContent = myTurn ? `내 차례! 말을 놓을 빈칸을 눌러요 (남은 말 ${left}개)` : `상대가 말을 놓는 중이에요… (순서: 나→상대→상대→나)`;
+    const order = WG.placeOrder(m).map((sd) => WG.SIDE_NAMES[sd]).join("→");
+    status.textContent = myTurn ? `내 차례! 말을 놓을 빈칸을 눌러요 (남은 말 ${left}개)` : `${WG.SIDE_NAMES[m.turn]}(${m[m.turn]})가 말을 놓는 중… (순서: ${order})`;
   } else if (myTurn) {
     status.textContent = wgBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러요 (주황 점선, 또는 그 방향 칸)"
       : wgBoard.sel !== null ? "② 갈 칸을 눌러요 (초록 칸, 제자리도 OK)" : "내 차례! ① 움직일 내 말을 눌러요";
   } else {
-    status.textContent = "상대 차례예요… 어디에 벽을 세울지 미리 생각해 봐요!";
+    status.textContent = `${WG.SIDE_NAMES[m.turn]}(${m[m.turn]}) 차례예요… 어디에 벽을 세울지 미리 생각해 봐요!`;
   }
   if (myTurn) status.classList.add("my");
 }
@@ -938,7 +947,7 @@ $("prHint").addEventListener("click", () => {
 // 벽바둑 AI와 연습 (점수 없음, 내 기기에서만)
 // =====================================================================
 const WP_LEVELS = [["easy", "🐣 쉬움"], ["normal", "🙂 보통"], ["hard", "🔥 어려움"]];
-const WP = { m: null, level: "easy", me: "a", busy: false, timer: null };
+const WP = { m: null, level: "easy", me: "a", n: 2, busy: false, timer: null };
 const wpBoard = new WG.WallBoard($("wpBoard"), {
   onPlace: (c) => wpHuman((x) => WG.applyPlace(x, WP.me, c)),
   onMove: (f, t, w) => wpHuman((x) => WG.applyMove(x, WP.me, f, t, w)),
@@ -947,9 +956,10 @@ const wpBoard = new WG.WallBoard($("wpBoard"), {
 wpBoard.onStep = () => wpStatus();
 function wpNew() {
   clearTimeout(WP.timer); WP.busy = false;
-  WP.me = Math.random() < 0.5 ? "a" : "b";
-  WP.m = { phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls() };
-  $("wpLevels").innerHTML = WP_LEVELS.map(([k, n]) => `<button class="pr-lv ${k === WP.level ? "active" : ""}" data-wplv="${k}">AI ${n}</button>`).join("");
+  WP.m = WG.newMatch(WP.n);
+  WP.me = WP.m.sides[Math.floor(Math.random() * WP.n)];
+  $("wpLevels").innerHTML = [2, 3, 4].map((k) => `<button class="pr-lv ${k === WP.n ? "active" : ""}" data-wpn="${k}">${k}명</button>`).join("")
+    + `<span class="pr-gap"></span>` + WP_LEVELS.map(([k, n]) => `<button class="pr-lv ${k === WP.level ? "active" : ""}" data-wplv="${k}">AI ${n}</button>`).join("");
   $("wpFace").src = "img/porong-wave.jpg";
   wpRender(); wpBot();
 }
@@ -977,17 +987,18 @@ function wpRender() {
 function wpStatus() {
   const m = WP.m, el = $("wpMsg");
   if (!m) return;
-  const color = WP.me === "a" ? "분홍" : "파랑";
+  const color = WG.SIDE_NAMES[WP.me];
   if (m.phase === "done") {
-    const my = WP.me === "a" ? m.scoreA : m.scoreB, op = WP.me === "a" ? m.scoreB : m.scoreA;
-    const win = m.winner === WP.me, draw = m.winner === "draw";
-    el.textContent = `${win ? "🏆 이겼어!" : draw ? "🤝 비겼어!" : "😢 AI가 이겼어."} 내 땅 ${my}칸 : AI 땅 ${op}칸. [새 판 시작]으로 다시 해 봐!`;
+    const o = WG.outcomeOf(m, WP.me), win = o === "win", draw = o === "draw";
+    const others = m.sides.filter((sd) => sd !== WP.me).map((sd) => `${WG.SIDE_NAMES[sd]} ${m.scores[sd]}칸`).join(", ");
+    const head = WP.n === 2 ? (win ? "🏆 이겼어!" : draw ? "🤝 비겼어!" : "😢 AI가 이겼어.") : `${win ? "🏆" : draw ? "🥈" : "😢"} ${WP.n}명 중 ${m.ranks[WP.me]}등!`;
+    el.textContent = `${head} 내 땅 ${m.scores[WP.me]}칸 (AI: ${others}). [새 판 시작]으로 다시 해 봐!`;
     $("wpFace").src = `img/porong-${win ? "trophy" : draw ? "cheer" : "cheerup"}.jpg`;
     if (win) confetti();
     return;
   }
   if (WP.busy || m.turn !== WP.me) { el.textContent = "AI가 생각하는 중이야… 🤔"; return; }
-  if (m.phase === "place") el.textContent = `나는 ${color}! 말을 놓을 빈칸을 눌러 봐. (순서: 분홍→파랑→파랑→분홍)`;
+  if (m.phase === "place") el.textContent = `나는 ${color}! 말을 놓을 빈칸을 눌러 봐. (순서: ${WG.placeOrder(m).map((sd) => WG.SIDE_NAMES[sd]).join("→")})`;
   else el.textContent = wpBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러 (주황 점선, 또는 그 방향 칸)"
     : wpBoard.sel !== null ? "② 갈 칸을 눌러 (초록 칸, 제자리도 OK)" : `내 차례(${color})! ① 움직일 내 말을 눌러 봐`;
 }
@@ -995,7 +1006,11 @@ function closeWgPractice() { clearTimeout(WP.timer); WP.busy = false; $("wgPract
 $("wgPracBtn").addEventListener("click", () => { $("wgPractice").classList.remove("hidden"); wpNew(); });
 $("wpClose").addEventListener("click", closeWgPractice);
 $("wpNew").addEventListener("click", wpNew);
-$("wpLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-wplv]"); if (b) { WP.level = b.dataset.wplv; wpNew(); } });
+$("wpLevels").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-wplv]"), c = e.target.closest("[data-wpn]");
+  if (b) { WP.level = b.dataset.wplv; wpNew(); }
+  if (c) { WP.n = Number(c.dataset.wpn); wpNew(); }
+});
 $("prCheck").addEventListener("click", () => {
   const L = PUZZLES[PR.lv];
   const d = diagnose(L.w, L.h, L.puzzles[PR.idx].c, prBoard.edges);
@@ -1127,7 +1142,8 @@ function playerState(p, r) {
   if (r.game === "wallgo") {
     if (res && res !== "pending") {
       const o = res.outcome;
-      return { cls: o === "lose" ? "bad" : "ok", txt: { win: "🏆 승리", draw: "🤝 무승부", lose: "😢 패배", bye: "🍀 부전승" }[o] + ` +${res.points}`, done: true };
+      const lbl = res.n > 2 ? { win: "🏆 1등", draw: `🥈 ${res.rank}등`, lose: `😢 ${res.rank}등` }[o] : { win: "🏆 승리", draw: "🤝 무승부", lose: "😢 패배", bye: "🍀 부전승" }[o];
+      return { cls: o === "lose" ? "bad" : "ok", txt: `${lbl} +${res.points}`, done: true };
     }
     const mt = p.mt && p.mt.round === r.round ? p.mt : null;
     if (!mt) return { cls: "", txt: r.status === "playing" ? "다음 게임부터" : "대기 중", done: r.status === "playing", spectator: true };
@@ -1167,6 +1183,11 @@ function renderTeacher() {
   }).join("");
   $("timeLabel").textContent = fmtTime(times()[T.sel - 1]);
   $("turnLabel").textContent = `${turnSec()}초`;
+  const sz = wgSize();
+  $("wgSizeBtns").innerHTML = [2, 3, 4].map((k) => `<button class="tc-btn ${k === sz ? "active" : ""}" data-wgsize="${k}" ${playing ? "disabled" : ""}>${k}명씩</button>`).join("");
+  const cnt = {}; makeGroups(T.players, sz).forEach((g) => (cnt[g.length] = (cnt[g.length] || 0) + 1));
+  $("wgSizeNote").textContent = T.players.length < 2 ? "학생이 2명 이상 들어오면 조가 짜여요."
+    : `지금 ${T.players.length}명 → ` + Object.keys(cnt).sort().map((k) => `${k}명 조 ${cnt[k]}개`).join(", ") + " (2명 조는 말 4개, 3~4명 조는 말 2개)";
   ["timeMinus", "timePlus", "turnMinus", "turnPlus"].forEach((id) => ($(id).disabled = playing));
   $("startBtn").classList.toggle("hidden", playing);
   $("endBtn").classList.toggle("hidden", !playing);
@@ -1245,18 +1266,17 @@ function renderMatches() {
   $("tMatchInfo").textContent = `${r.round}라운드 · 벽바둑 1 · 한 수 ${r.turnSec || DEFAULT_TURN}초${r.status === "ended" ? " · 끝" : ""}`;
   $("tMatches").innerHTML = ms_.map((m, i) => {
     let st, cls = "";
-    if (m.phase === "done") {
-      const w = m.winner === "a" ? m.a : m.winner === "b" ? m.b : null;
-      st = w ? `끝 · <b>${esc(w)}</b> 승 (${Math.max(m.scoreA, m.scoreB)}:${Math.min(m.scoreA, m.scoreB)})` : `끝 · 무승부 (${m.scoreA}:${m.scoreB})`;
+    const sides = WG.sidesOf(m), done = m.phase === "done";
+    const sc = m.scores || { a: m.scoreA, b: m.scoreB };
+    if (done) {
+      const order = [...sides].sort((x, y) => (sc[y] || 0) - (sc[x] || 0));
+      st = "끝 · " + order.map((sd) => `${(m.ranks || {})[sd] || ""}등 <b>${esc(m[sd])}</b>(${sc[sd] || 0})`).join(" · ");
       if (m.forced) st += " · 시간 종료";
       cls = "done";
     } else if (m.phase === "place") st = "말 놓는 중";
-    else st = `경기 중 · ${Math.max(1, m.moveNo - 3)}수째`;
-    const wa = m.phase === "done" && m.winner === "a", wb = m.phase === "done" && m.winner === "b";
-    return `<div class="mc ${cls}">
-      <span class="mc-no">${i + 1}</span>
-      <span class="mc-p side-a ${wa ? "win" : ""}">${esc(m.a)}</span><span class="mc-vs">vs</span><span class="mc-p side-b ${wb ? "win" : ""}">${esc(m.b)}</span>
-      <span class="mc-st">${st}</span></div>`;
+    else st = `경기 중 · ${Math.max(1, m.moveNo - WG.placeOrder(m).length + 1)}수째 · ${esc(m[m.turn] || "")} 차례`;
+    const ps = sides.map((sd) => `<span class="mc-p side-${sd} ${done && (m.ranks || {})[sd] === 1 ? "win" : ""}">${esc(m[sd])}</span>`).join(`<span class="mc-vs">vs</span>`);
+    return `<div class="mc ${cls}"><span class="mc-no">${i + 1}</span>${ps}<span class="mc-st">${st}</span></div>`;
   }).join("") + byes.map((p) => `<div class="mc done bye"><span class="mc-no">🍀</span><span class="mc-p">${esc(p.name)}</span><span class="mc-st">부전승</span></div>`).join("");
 }
 
@@ -1342,9 +1362,13 @@ async function gradeOne(p, round) {
 
 // ----- 벽바둑 점수 -----
 function wgResult(m, side, round) {
-  const P = wgPts();
-  const o = m.winner === "draw" ? "draw" : m.winner === side ? "win" : "lose";
-  return { round, game: "wallgo", outcome: o, points: P[o], my: side === "a" ? m.scoreA : m.scoreB, opp: side === "a" ? m.scoreB : m.scoreA, vs: side === "a" ? m.b : m.a };
+  const P = wgPts(), sides = WG.sidesOf(m);
+  const sc = m.scores || { a: m.scoreA || 0, b: m.scoreB || 0 };
+  const ranks = m.ranks || WG.ranksOf(sc);
+  const o = WG.outcomeOf({ ...m, ranks }, side);
+  const others = sides.filter((sd) => sd !== side);
+  return { round, game: "wallgo", outcome: o, points: P[o], rank: ranks[side], n: sides.length, my: sc[side] || 0,
+    opp: Math.max(...others.map((sd) => sc[sd] || 0)), vs: others.map((sd) => m[sd]).join(", ") };
 }
 function gradeMatches() {
   const r = T.room;
@@ -1352,7 +1376,7 @@ function gradeMatches() {
   const round = r.round;
   for (const m of roundMatches()) {
     if (m.phase !== "done") continue;
-    for (const side of ["a", "b"]) {
+    for (const side of WG.sidesOf(m)) {
       const name = m[side], key = round + "|" + name;
       const p = T.players.find((x) => x.id === name);
       if (!p || (p.result && p.result.round === round) || T.graded.has(key)) continue;
@@ -1377,7 +1401,7 @@ async function endRound() {
       for (const m of roundMatches()) {
         let mm = m;
         if (m.phase !== "done") { const f = WG.forceFinish(m); batch.update(mRefOf(m.id), { ...f, endedAt: now() }); mm = { ...m, ...f }; }
-        for (const side of ["a", "b"]) {
+        for (const side of WG.sidesOf(mm)) {
           const name = mm[side], key = round + "|" + name;
           const p = T.players.find((x) => x.id === name);
           if (!p || (p.result && p.result.round === round) || T.graded.has(key)) continue;
@@ -1418,31 +1442,35 @@ async function startFence() {
   });
 }
 
+// 정한 인원(2~4명)에 가깝게, 부전승 없이 모두 2~4명 조로 나누기
+function makeGroups(list, k) {
+  const n = list.length;
+  if (n < 2) return [];
+  let g = Math.round(n / k);
+  g = Math.max(g, Math.ceil(n / 4));
+  g = Math.max(1, Math.min(g, Math.floor(n / 2)));
+  const base = Math.floor(n / g), extra = n % g, groups = [];
+  let i = 0;
+  for (let j = 0; j < g; j++) { const sz = base + (j < extra ? 1 : 0); groups.push(list.slice(i, i + sz)); i += sz; }
+  return groups;
+}
+const wgSize = () => { const v = T.room && T.room.wgSize; return v >= 2 && v <= 4 ? v : 2; };
 async function startWallgo() {
   const r = T.room;
   const list = [...T.players];
   if (list.length < 2) return toast("벽바둑은 2명 이상 들어와야 시작할 수 있어요.");
   for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
-  const round = (r.round || 0) + 1, sec = turnSec(), P = wgPts();
+  const round = (r.round || 0) + 1, sec = turnSec(), size = wgSize();
   const batch = writeBatch(db);
-  let n = 0;
-  for (let i = 0; i + 1 < list.length; i += 2) {
-    n++;
-    const id = `${round}-${n}`, a = list[i].id, b = list[i + 1].id;
-    batch.set(mRefOf(id), {
-      round, a, b, phase: "place", turn: WG.PLACE_ORDER[0], placeNo: 0, moveNo: 0, turnSec: sec,
-      stones: { a: [...WG.START.a, -1, -1], b: [...WG.START.b, -1, -1] }, walls: WG.emptyWalls()
+  makeGroups(list, size).forEach((grp, gi) => {
+    const id = `${round}-${gi + 1}`, m = WG.newMatch(grp.length, { round, turnSec: sec });
+    m.sides.forEach((sd, k) => {
+      m[sd] = grp[k].id;
+      batch.update(pRefOf(grp[k].id), { mt: { round, id, side: sd } });
     });
-    batch.update(pRefOf(a), { mt: { round, id, side: "a" } });
-    batch.update(pRefOf(b), { mt: { round, id, side: "b" } });
-  }
-  if (list.length % 2) {
-    const p = list[list.length - 1];
-    const result = { round, game: "wallgo", outcome: "bye", points: P.win };
-    batch.update(pRefOf(p.id), { mt: { round, bye: true }, result, score: increment(P.win), total: increment(P.win) });
-    T.graded.set(round + "|" + p.id, result);
-  }
-  batch.update(T.roomRef, { status: "playing", game: "wallgo", round, startAt: serverTimestamp(), turnSec: sec, explain: deleteField() });
+    batch.set(mRefOf(id), m);
+  });
+  batch.update(T.roomRef, { status: "playing", game: "wallgo", round, startAt: serverTimestamp(), turnSec: sec, wgSize: size, explain: deleteField() });
   await batch.commit();
 }
 
@@ -1477,6 +1505,11 @@ function changeTurn(d) {
   updateDoc(T.roomRef, { turnSec: Math.min(120, Math.max(10, turnSec() + d)) }).catch(() => toast("시간을 바꾸지 못했어요."));
 }
 $("turnMinus").addEventListener("click", () => changeTurn(-5));
+$("wgSizeBtns").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-wgsize]");
+  if (!b || b.disabled) return;
+  updateDoc(T.roomRef, { wgSize: Number(b.dataset.wgsize) }).catch(() => toast("인원을 바꾸지 못했어요."));
+});
 $("turnPlus").addEventListener("click", () => changeTurn(5));
 $("startBtn").addEventListener("click", startRound);
 $("explainBtn").addEventListener("click", () => {

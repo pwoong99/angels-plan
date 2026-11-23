@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v1.8">
+<link rel="stylesheet" href="style.css?v=v1.9">
 </head>
 <body>
 
@@ -301,7 +301,9 @@
             <button class="btn round" id="turnPlus">＋</button>
             <small>(5초씩)</small>
           </div>
-          <p class="hint">스타트를 누르면 방에 있는 학생들이 무작위로 2명씩 짝지어져요. 홀수면 1명은 부전승이에요.</p>
+          <div class="time-row"><span>👥 몇 명씩</span><div id="wgSizeBtns" class="tc-btns"></div></div>
+          <p class="hint" id="wgSizeNote"></p>
+          <p class="hint">스타트를 누르면 방에 있는 학생들이 무작위로 조가 짜여요. 딱 나누어떨어지지 않으면 몇 조만 한 명 많거나 적게(2~4명) 짜서 모두 참여해요.</p>
         </div>
         <button class="btn sun big" id="explainBtn">📖 게임 설명 시작</button>
         <button class="btn primary big" id="startBtn">▶ 스타트</button>
@@ -439,11 +441,11 @@
     <p class="hint" id="ptsPreview"></p>
     <h4>🧱 벽바둑 1</h4>
     <div class="wg-pts">
-      <label>승리 <input id="wgWin" type="number" min="0" max="100"></label>
-      <label>무승부 <input id="wgDraw" type="number" min="0" max="100"></label>
-      <label>패배 <input id="wgLose" type="number" min="0" max="100"></label>
+      <label>1등(승리) <input id="wgWin" type="number" min="0" max="100"></label>
+      <label>중간·무승부 <input id="wgDraw" type="number" min="0" max="100"></label>
+      <label>꼴찌(패배) <input id="wgLose" type="number" min="0" max="100"></label>
     </div>
-    <p class="hint">부전승은 승리 점수를 받아요. 져도 참여 점수를 받을 수 있게 패배 점수를 정해요.</p>
+    <p class="hint">3~4명 조에서는 1등이 승리 점수, 꼴찌가 패배(참여) 점수, 그 사이 등수가 중간 점수를 받아요. 모두 같은 땅이면 무승부예요.</p>
     <div class="modal-btns">
       <button class="btn ghost" id="ptsCancel">취소</button>
       <button class="btn primary" id="ptsSave">저장</button>
@@ -481,6 +483,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v1.8"></script>
+<script type="module" src="app.js?v=v1.9"></script>
 </body>
 </html>

@@ -1,14 +1,33 @@
-// 벽바둑 1 — 규칙 엔진과 판 화면
-// 7×7 판, 각자 말 4개(2개는 정해진 자리, 2개는 번갈아 직접 놓기)
+// 벽바둑 1 — 규칙 엔진과 판 화면 (2~4명)
+// 7×7 판. 2명: 각자 말 4개(2개는 정해진 자리, 2개는 번갈아 직접 놓기, 순서 a→b→b→a)
+//        3~4명: 각자 말 2개(1개는 정해진 자리, 1개는 거꾸로 순서로 직접 놓기)
 // 차례: 말 하나를 0~2칸 이동(상하좌우, 꺾기 가능, 벽·말 통과 불가) → 그 칸의 네 변 중 한 곳에 벽 세우기
-// 끝: 서로 다른 색 말이 같은 공간에 없을 때. 내 말만 있는 공간의 칸 수가 점수.
+// 끝: 서로 다른 편 말이 같은 공간에 없을 때. 내 말만 있는 공간의 칸 수가 점수, 넓은 순서로 등수.
 export const N = 7;
 const HN = (N - 1) * N;          // 가로 벽(위아래 칸 사이) 개수
 export const WALLS = HN + N * (N - 1);
+export const SIDES = ["a", "b", "c", "d"];
+export const SIDE_NAMES = { a: "분홍", b: "파랑", c: "초록", d: "노랑" };
+const CORNER = { a: 1 * N + 1, b: 1 * N + 5, c: 5 * N + 5, d: 5 * N + 1 };
+// 예전(2명) 코드와 맞추기 위한 이름
 export const START = { a: [1 * N + 1, 5 * N + 5], b: [1 * N + 5, 5 * N + 1] };
-export const PLACE_ORDER = ["a", "b", "b", "a"];   // 직접 놓는 순서
-export const FIRST_MOVE = "b";                     // 놓기가 끝나면 b가 먼저 움직임
+export const PLACE_ORDER = ["a", "b", "b", "a"];
+
+export const sidesOf = (m) => (m && Array.isArray(m.sides) && m.sides.length ? m.sides : ["a", "b"]);
+export const nextSide = (m, s) => { const ss = sidesOf(m); return ss[(ss.indexOf(s) + 1) % ss.length]; };
 export const other = (s) => (s === "a" ? "b" : "a");
+export function placeOrder(m) {
+  const ss = sidesOf(m);
+  return ss.length === 2 ? ["a", "b", "b", "a"] : [...ss].reverse();
+}
+// 새 판
+export function newMatch(n = 2, extra = {}) {
+  const sides = SIDES.slice(0, Math.max(2, Math.min(4, n)));
+  const stones = {};
+  if (sides.length === 2) { stones.a = [...START.a, -1, -1]; stones.b = [...START.b, -1, -1]; }
+  else sides.forEach((s) => (stones[s] = [CORNER[s], -1]));
+  return { sides, phase: "place", turn: placeOrder({ sides })[0], placeNo: 0, moveNo: 0, stones, walls: emptyWalls(), ...extra };
+}
 
 // 칸 사이 벽 번호 (붙어 있지 않으면 -1)
 export function wallBetween(c1, c2) {
@@ -36,7 +55,7 @@ export const emptyWalls = () => "0".repeat(WALLS);
 
 export function occupied(stones) {
   const m = new Map();
-  for (const s of ["a", "b"]) (stones[s] || []).forEach((c) => { if (c >= 0) m.set(c, s); });
+  for (const s of Object.keys(stones || {})) (stones[s] || []).forEach((c) => { if (c >= 0) m.set(c, s); });
   return m;
 }
 export function freeWallsAround(cell, walls) {
@@ -59,7 +78,7 @@ export function reachable(state, from) {
 }
 export function legalMoves(state, side) {
   const out = [];
-  for (const from of state.stones[side]) {
+  for (const from of state.stones[side] || []) {
     if (from < 0) continue;
     for (const to of reachable(state, from)) for (const w of freeWallsAround(to, state.walls)) out.push({ from, to, wall: w });
   }
@@ -87,47 +106,68 @@ export function evaluate(state) {
     }
     info.push({ size: cells.length, owner: sides.size === 1 ? [...sides][0] : sides.size === 0 ? null : "mixed" });
   }
-  const score = { a: 0, b: 0 };
-  info.forEach((g) => { if (g.owner === "a" || g.owner === "b") score[g.owner] += g.size; });
+  const score = {};
+  sidesOf(state).forEach((sd) => (score[sd] = 0));
+  info.forEach((g) => { if (g.owner && g.owner !== "mixed") score[g.owner] = (score[g.owner] || 0) + g.size; });
   const done = !info.some((g) => g.owner === "mixed");
   return { done, score, region, info };
 }
-export function winnerOf(score) { return score.a > score.b ? "a" : score.b > score.a ? "b" : "draw"; }
+// 등수: 나보다 땅이 넓은 편 수 + 1 (같으면 같은 등수)
+export function ranksOf(score) {
+  const r = {};
+  Object.keys(score).forEach((s) => (r[s] = 1 + Object.keys(score).filter((t) => score[t] > score[s]).length));
+  return r;
+}
+export function winnerOf(score) {
+  const ks = Object.keys(score), top = Math.max(...ks.map((k) => score[k]));
+  const best = ks.filter((k) => score[k] === top);
+  return best.length === 1 ? best[0] : "draw";
+}
+function doneFields(ev) {
+  const out = { phase: "done", scores: ev.score, ranks: ranksOf(ev.score), winner: winnerOf(ev.score) };
+  if ("a" in ev.score) out.scoreA = ev.score.a;
+  if ("b" in ev.score) out.scoreB = ev.score.b;
+  return out;
+}
 
 // 한 수 두기 (새 상태 반환). 잘못된 수면 null
 export function applyPlace(m, side, cell) {
   if (m.phase !== "place" || m.turn !== side) return null;
   if (occupied(m.stones).has(cell)) return null;
-  const stones = { a: [...m.stones.a], b: [...m.stones.b] };
+  const stones = {};
+  for (const s of Object.keys(m.stones)) stones[s] = [...m.stones[s]];
   const i = stones[side].indexOf(-1);
   if (i < 0) return null;
   stones[side][i] = cell;
-  const placeNo = (m.placeNo || 0) + 1;
+  const order = placeOrder(m), placeNo = (m.placeNo || 0) + 1;
   const out = { stones, placeNo, moveNo: m.moveNo + 1, last: { place: cell, side } };
-  if (placeNo >= PLACE_ORDER.length) { out.phase = "play"; out.turn = FIRST_MOVE; }
-  else out.turn = PLACE_ORDER[placeNo];
+  if (placeNo >= order.length) { out.phase = "play"; out.turn = nextSide(m, order[order.length - 1]); }
+  else out.turn = order[placeNo];
   return finishTurn(m, out);
 }
 export function applyMove(m, side, from, to, wall) {
   if (m.phase !== "play" || m.turn !== side) return null;
-  const idx = m.stones[side].indexOf(from);
+  const idx = (m.stones[side] || []).indexOf(from);
   if (idx < 0 || !reachable(m, from).includes(to) || !freeWallsAround(to, m.walls).includes(wall)) return null;
-  const stones = { a: [...m.stones.a], b: [...m.stones.b] };
+  const stones = {};
+  for (const s of Object.keys(m.stones)) stones[s] = [...m.stones[s]];
   stones[side][idx] = to;
   const walls = m.walls.slice(0, wall) + side + m.walls.slice(wall + 1);
-  return finishTurn(m, { stones, walls, moveNo: m.moveNo + 1, turn: other(side), last: { from, to, wall, side } });
+  return finishTurn(m, { stones, walls, moveNo: m.moveNo + 1, turn: nextSide(m, side), last: { from, to, wall, side } });
 }
-// 차례 넘기기·끝 확인
+// 차례 넘기기·끝 확인 (둘 곳이 없는 편은 건너뜀)
 function finishTurn(m, out) {
   const st = { ...m, ...out };
   if (st.phase === "play") {
     const ev = evaluate(st);
     let ended = ev.done;
-    if (!ended && !legalMoves(st, st.turn).length) {
-      st.turn = other(st.turn); out.turn = st.turn;
-      if (!legalMoves(st, st.turn).length) ended = true;
+    if (!ended) {
+      let t = st.turn, tries = 0;
+      while (!legalMoves(st, t).length && tries < sidesOf(st).length) { t = nextSide(st, t); tries++; }
+      if (tries >= sidesOf(st).length) ended = true;
+      else if (t !== st.turn) { st.turn = t; out.turn = t; }
     }
-    if (ended) Object.assign(out, { phase: "done", scoreA: ev.score.a, scoreB: ev.score.b, winner: winnerOf(ev.score) });
+    if (ended) Object.assign(out, doneFields(ev));
   }
   return out;
 }
@@ -140,7 +180,7 @@ export function randomAction(m) {
   }
   if (m.phase === "play") {
     const mv = legalMoves(m, side);
-    if (!mv.length) return finishTurn(m, { turn: other(side), moveNo: m.moveNo + 1 });
+    if (!mv.length) return finishTurn(m, { turn: nextSide(m, side), moveNo: m.moveNo + 1 });
     const x = mv[Math.floor(Math.random() * mv.length)];
     return applyMove(m, side, x.from, x.to, x.wall);
   }
@@ -148,33 +188,47 @@ export function randomAction(m) {
 }
 // 교사가 라운드를 끝낼 때: 지금 상태로 점수 매기기
 export function forceFinish(m) {
-  const ev = evaluate(m);
-  return { phase: "done", scoreA: ev.score.a, scoreB: ev.score.b, winner: winnerOf(ev.score), forced: true };
+  return { ...doneFields(evaluate(m)), forced: true };
+}
+// 등수와 인원으로 결과 종류: win(1등) / lose(꼴찌) / draw(그 사이·모두 같음)
+export function outcomeOf(m, side) {
+  const ranks = m.ranks || ranksOf(m.scores || { a: m.scoreA || 0, b: m.scoreB || 0 });
+  const vals = Object.values(ranks), r = ranks[side];
+  const worst = Math.max(...vals);
+  if (worst === 1) return "draw";
+  if (r === 1) return "win";
+  if (r === worst) return "lose";
+  return "draw";
 }
 
 // ---------------- 연습용 AI ----------------
-// 땅 어림: 두 편 말에서 동시에 퍼져 나가 먼저 닿는 칸을 그 편 땅으로 셈 (벽만 막힘)
+// 땅 어림: 모든 편 말에서 동시에 퍼져 나가 가장 먼저 닿는 칸을 그 편 땅으로 셈 (벽만 막힘)
 function territory(st) {
-  const dist = { a: new Array(N * N).fill(99), b: new Array(N * N).fill(99) };
-  for (const s of ["a", "b"]) {
+  const ss = sidesOf(st), dist = {};
+  for (const s of ss) {
+    dist[s] = new Array(N * N).fill(99);
     const q = [];
-    st.stones[s].forEach((c) => { if (c >= 0) { dist[s][c] = 0; q.push(c); } });
+    (st.stones[s] || []).forEach((c) => { if (c >= 0) { dist[s][c] = 0; q.push(c); } });
     for (let i = 0; i < q.length; i++) {
       const x = q[i];
       for (const y of adj(x)) if (!blocked(st.walls, x, y) && dist[s][y] > dist[s][x] + 1) { dist[s][y] = dist[s][x] + 1; q.push(y); }
     }
   }
-  let a = 0, b = 0;
-  for (let c = 0; c < N * N; c++) { if (dist.a[c] < dist.b[c]) a++; else if (dist.b[c] < dist.a[c]) b++; }
-  return { a, b };
+  const t = {}; ss.forEach((s) => (t[s] = 0));
+  for (let c = 0; c < N * N; c++) {
+    let best = 99, who = null;
+    for (const s of ss) { if (dist[s][c] < best) { best = dist[s][c]; who = s; } else if (dist[s][c] === best) who = null; }
+    if (who) t[who]++;
+  }
+  return t;
 }
 function scoreFor(st, side) {
   const ev = evaluate(st);
-  if (ev.done) return (ev.score[side] - ev.score[other(side)]) * 10;
-  const t = territory(st);
-  return t[side] - t[other(side)];
+  const sc = ev.done ? ev.score : territory(st), k = ev.done ? 10 : 1;
+  const others = Object.keys(sc).filter((s) => s !== side).map((s) => sc[s]);
+  return (sc[side] - Math.max(...others)) * k;
 }
-// level: "easy"(아무 데나) / "normal"(땅을 넓히는 수 중에서 고름) / "hard"(가장 좋은 수)
+// level: "easy"(가끔 실수) / "normal"(좋은 수 몇 개 중에서) / "hard"(가장 좋은 수)
 export function botAction(m, level = "normal") {
   const side = m.turn;
   if (level === "easy" && Math.random() < 0.6) return randomAction(m);
@@ -225,13 +279,13 @@ export class WallBoard {
     const m = this.m, svg = this.svg, P = this.uid || (this.uid = "wg" + (++wgSeq) + "-");
     const u = (id) => `url(#${P}${id})`;
     const grad = (id, dir, c) => `<linearGradient id="${P}${id}" x1="0" y1="0" x2="${dir === "v" ? 1 : 0}" y2="${dir === "v" ? 0 : 1}">${c.map((x, i) => `<stop offset="${i / (c.length - 1)}" stop-color="${x}"/>`).join("")}</linearGradient>`;
-    const WA = ["#ffb3c9", "#ef6b97", "#b93564"], WB = ["#a9c6ff", "#4f7fe0", "#2a4fa8"];
+    const WCOL = { a: ["#ffb3c9", "#ef6b97", "#b93564"], b: ["#a9c6ff", "#4f7fe0", "#2a4fa8"], c: ["#a6ecc9", "#34c38f", "#1f8f63"], d: ["#ffe3a3", "#ffb020", "#c98200"] };
+    const SCOL = { a: ["#ffe1ea", "#ff7aa2", "#c23a6b"], b: ["#dfe9ff", "#5b8def", "#2c55b5"], c: ["#dcfbe9", "#34c38f", "#1b7f57"], d: ["#fff3cf", "#ffb020", "#b97700"] };
     svg.innerHTML = `<defs>
       <linearGradient id="${P}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f7ff"/><stop offset="1" stop-color="#e3eafb"/></linearGradient>
       <linearGradient id="${P}tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#edf1fb"/></linearGradient>
-      ${grad("wah", "h", WA)}${grad("wav", "v", WA)}${grad("wbh", "h", WB)}${grad("wbv", "v", WB)}
-      <radialGradient id="${P}sa" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffe1ea"/><stop offset=".45" stop-color="#ff7aa2"/><stop offset="1" stop-color="#c23a6b"/></radialGradient>
-      <radialGradient id="${P}sb" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#dfe9ff"/><stop offset=".45" stop-color="#5b8def"/><stop offset="1" stop-color="#2c55b5"/></radialGradient>
+      ${SIDES.map((sd) => grad(`w${sd}h`, "h", WCOL[sd]) + grad(`w${sd}v`, "v", WCOL[sd])).join("")}
+      ${SIDES.map((sd) => `<radialGradient id="${P}s${sd}" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="${SCOL[sd][0]}"/><stop offset=".45" stop-color="${SCOL[sd][1]}"/><stop offset="1" stop-color="${SCOL[sd][2]}"/></radialGradient>`).join("")}
       <filter id="${P}sh" x="-40%" y="-40%" width="180%" height="190%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#29304d" flood-opacity=".3"/></filter>
       <filter id="${P}tsh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#8a98c4" flood-opacity=".35"/></filter>
       <filter id="${P}bsh" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#5b8def" flood-opacity=".2"/></filter>
@@ -246,7 +300,7 @@ export class WallBoard {
     for (let c = 0; c < N * N; c++) {
       const [x, y] = this.xy(c);
       let cls = "wg-cell";
-      if (ev) { const o = ev.info[ev.region[c]].owner; if (o === "a" || o === "b") cls += " own-" + o; }
+      if (ev) { const o = ev.info[ev.region[c]].owner; if (o && o !== "mixed") cls += " own-" + o; }
       if (reach.has(c)) cls += " reach";
       if (canPlace && !occ.has(c)) cls += " placeable";
       if (this.dest === c) cls += " dest";
@@ -282,7 +336,7 @@ export class WallBoard {
     }
     // 말 (반짝이는 구슬)
     const stones = add("g", { filter: u("sh") });
-    for (const s of ["a", "b"]) m.stones[s].forEach((c) => {
+    for (const s of Object.keys(m.stones)) m.stones[s].forEach((c) => {
       if (c < 0) return;
       const shown = this.dest !== null && c === this.sel ? this.dest : c;
       if (shown !== c) { const [gx, gy] = this.xy(c); add("circle", { cx: gx + S / 2, cy: gy + S / 2, r: 15, class: `wg-ghost side-${s}` }); }
