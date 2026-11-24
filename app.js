@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.01";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.01";
-import * as WG from "./wallgo.js?v=v1.01";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.01";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.01";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.01";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.01";
+import { PUZZLES } from "./puzzles.js?v=v1.02";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.02";
+import * as WG from "./wallgo.js?v=v1.02";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.02";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.02";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.02";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.02";
 
-const VERSION = "v1.01";
+const VERSION = "v1.02";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -369,7 +369,7 @@ const EXPLAIN = {
   wallgo: [
     { title: "🧱 벽바둑 1이란?", text: "친구들과 2~4명이 겨루는 땅따먹기 게임이에요. 7×7 판을 써요.\n2명이면 말 4개씩, 3~4명이면 말 2개씩!", show: () => wallShow(WG_DEMO.init) },
     { title: "말 놓기", text: "처음엔 정해진 자리에 말이 놓여 있어요. 나머지 말은 순서대로 빈칸에 직접 놓아요.\n2명: 분홍 → 파랑 → 파랑 → 분홍 · 3~4명: 한 개씩 거꾸로 순서", show: () => wallShow(WG_DEMO.placed) },
-    { title: "말 움직이기", text: "내 차례엔 내 말 하나를 꼭 1~2칸 움직여요. 제자리는 안 돼요!\n상하좌우로, 꺾어서 가도 돼요. 초록 칸이 갈 수 있는 곳!",
+    { title: "말 움직이기", text: "내 차례엔 내 말 하나를 꼭 1~2칸 움직여요. 제자리는 안 돼요!\n상하좌우로, 꺾어서 가도 돼요. 초록 칸이 갈 수 있는 곳! 움직일 말이 하나도 없으면 차례가 저절로 넘어가요.",
       show: () => wallShow(WG_DEMO.placed, { active: true, sel: WG_DEMO.placed.stones[WG_DEMO.placed.turn][0] }) },
     { title: "벽 세우기", text: "움직인 칸의 둘레 중 한 곳에 벽을 꼭 세워요. (주황 점선)\n벽과 다른 말은 지나갈 수 없고, 세운 벽은 없앨 수 없어요.",
       show: () => { const m = WG_DEMO.mid, lm = WG.legalMoves(m, m.turn)[0]; wallShow(m, lm ? { active: true, sel: lm.from, dest: lm.to } : {}); } },
@@ -906,7 +906,9 @@ function renderStudentWallgo(r, me, res) {
     status.textContent = wgBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러요 (주황 점선, 또는 그 방향 칸)"
       : wgBoard.sel !== null ? "② 갈 칸을 눌러요 (초록 칸, 제자리는 안 돼요)" : "내 차례! ① 움직일 내 말을 눌러요";
   } else {
-    status.textContent = `${WG.SIDE_NAMES[m.turn]}(${m[m.turn]}) 차례예요… 어디에 벽을 세울지 미리 생각해 봐요!`;
+    const skip = m.last && Array.isArray(m.last.skip) ? m.last.skip : [];
+    status.textContent = skip.includes(side) ? `🚫 내 말이 모두 움직일 곳이 없어서 차례가 넘어갔어요. 지금은 ${WG.SIDE_NAMES[m.turn]}(${m[m.turn]}) 차례예요.`
+      : `${WG.SIDE_NAMES[m.turn]}(${m[m.turn]}) 차례예요… 어디에 벽을 세울지 미리 생각해 봐요!`;
   }
   if (myTurn) status.classList.add("my");
 }
@@ -1377,7 +1379,7 @@ function wpStatus() {
     if (win) confetti();
     return;
   }
-  if (WP.busy || m.turn !== WP.me) { el.textContent = "AI가 생각하는 중이야… 🤔"; return; }
+  if (WP.busy || m.turn !== WP.me) { el.textContent = m.last && Array.isArray(m.last.skip) && m.last.skip.includes(WP.me) ? "네 말이 모두 움직일 곳이 없어서 차례가 넘어갔어. AI가 두는 중이야…" : "AI가 생각하는 중이야… 🤔"; return; }
   if (m.phase === "place") el.textContent = `나는 ${color}! ${m.v === 2 ? WG.KIND_NAMES[WG.nextPlaceKind(m, m.turn)] + " " : ""}말을 놓을 빈칸을 눌러 봐. (순서: ${WG.placeOrder(m).map((sd) => WG.SIDE_NAMES[sd]).join("→")})`;
   else el.textContent = wpBoard.dest !== null ? "③ 벽을 세울 쪽을 눌러 (주황 점선, 또는 그 방향 칸)"
     : wpBoard.sel !== null ? "② 갈 칸을 눌러 (초록 칸, 제자리는 안 돼요)" : `내 차례(${color})! ① 움직일 내 말을 눌러 봐`;
@@ -2132,7 +2134,10 @@ async function startCube() {
   const reset = cand.length < CUBE_Q;
   if (reset) cand = L.puzzles.map((_, i) => i);
   for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
-  const pick = cand.slice(0, CUBE_Q);
+  // 한 판 5문제는 되도록 답(큐브 개수)이 서로 다르게
+  const pick = [], got = new Set();
+  for (const i of cand) { if (pick.length >= CUBE_Q) break; const n = cubeCount(L.puzzles[i]); if (!got.has(n)) { got.add(n); pick.push(i); } }
+  for (const i of cand) { if (pick.length >= CUBE_Q) break; if (!pick.includes(i)) pick.push(i); }
   await updateDoc(T.roomRef, {
     status: "playing", game: "cube", round: (r.round || 0) + 1, level: lv,
     cube: { lv, qs: pick.map((i) => L.puzzles[i]) },

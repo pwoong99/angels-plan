@@ -87,17 +87,10 @@ export function freeWallsAround(cell, walls) {
   return adj(cell).map((n) => wallBetween(cell, n)).filter((w) => walls[w] === "0");
 }
 // 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~2칸
-// 제자리는 안 됨: 꼭 1~2칸 움직여야 함. 단, 내 말이 모두 갇혀서 한 칸도 못 움직이면 그때만 제자리에서 벽 세우기
+// 제자리는 안 됨: 꼭 1~2칸 움직여야 함. 내 말이 모두 갇혀서 한 칸도 못 움직이면 내 차례는 저절로 넘어감(finishTurn)
 const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-const ownerOf = (state, cell) => Object.keys(state.stones || {}).find((sd) => (state.stones[sd] || []).includes(cell));
 function movesFrom(state, from) { return reachAll(state, from).filter((c) => c !== from); }
-export function reachable(state, from) {
-  const mv = movesFrom(state, from);
-  if (mv.length) return mv;
-  const side = ownerOf(state, from);
-  const stuck = !side || (state.stones[side] || []).every((c) => c < 0 || !movesFrom(state, c).length);
-  return stuck ? reachAll(state, from).filter((c) => c === from) : [];
-}
+export function reachable(state, from) { return movesFrom(state, from); }
 function reachAll(state, from) {
   const occ = occupied(state.stones);
   const res = new Set([from]);
@@ -212,9 +205,11 @@ function finishTurn(m, out) {
     let ended = ev.done;
     if (!ended) {
       let t = st.turn, tries = 0;
-      while (!legalMoves(st, t).length && tries < sidesOf(st).length) { t = nextSide(st, t); tries++; }
+      const skipped = [];
+      while (!legalMoves(st, t).length && tries < sidesOf(st).length) { skipped.push(t); t = nextSide(st, t); tries++; }
       if (tries >= sidesOf(st).length) ended = true;
       else if (t !== st.turn) { st.turn = t; out.turn = t; }
+      if (skipped.length) out.last = { ...(out.last || {}), skip: skipped };   // 움직일 말이 없어서 차례를 건너뛴 편 (보안 규칙상 last 안에 적음)
     }
     if (ended) Object.assign(out, doneFields(ev));
   }
