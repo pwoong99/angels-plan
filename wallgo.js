@@ -1,7 +1,7 @@
 // 벽바둑 1 — 규칙 엔진과 판 화면 (2~4명)
 // 7×7 판. 2명: 각자 말 4개(2개는 정해진 자리, 2개는 번갈아 직접 놓기, 순서 a→b→b→a)
 //        3~4명: 각자 말 2개(1개는 정해진 자리, 1개는 거꾸로 순서로 직접 놓기)
-// 차례: 말 하나를 1~2칸 이동(상하좌우, 꺾기 가능, 벽·말 통과 불가, 제자리 안 됨 — 모든 말이 갇혔을 때만 제자리) → 그 칸의 네 변 중 한 곳에 벽 세우기
+// 차례: 말 하나를 1~2칸 이동(상하좌우, 꺾기 가능, 벽·말 통과 불가, 제자리 안 됨 — 움직일 말이 없으면 차례 넘김) → 그 칸의 네 변 중 한 곳에 벽 세우기
 // 끝: 서로 다른 편 말이 같은 공간에 없을 때. 내 말만 있는 공간의 칸 수가 점수, 넓은 순서로 등수.
 export const N = 7;
 const HN = (N - 1) * N;          // 가로 벽(위아래 칸 사이) 개수
@@ -29,7 +29,7 @@ export function newMatch(n = 2, extra = {}) {
   return { sides, phase: "place", turn: placeOrder({ sides })[0], placeNo: 0, moveNo: 0, stones, walls: emptyWalls(), ...extra };
 }
 
-// 벽바둑 2: 말이 두 종류. 네모(s) = 한 방향으로 곧게 1~2칸(꺾기 X) / 동그라미(r) = 1~2칸, 꺾어도 됨
+// 벽바둑 2: 말이 두 종류. 네모(s) = 한 방향으로 곧게 1~2칸(꺾기 X) / 동그라미(r) = 꼭 2칸, 한 칸 간 뒤 반드시 꺾어서 한 칸(ㄱ자)
 // 2명: 네모 2 + 동그라미 2 (정해진 자리에 하나씩, 직접 놓는 것도 하나씩) / 3~4명: 네모 1(정해진 자리) + 동그라미 1(직접 놓기)
 export const KIND_NAMES = { s: "네모", r: "동그라미" };
 export function newMatch2(n = 2, extra = {}) {
@@ -86,7 +86,7 @@ export function occupied(stones) {
 export function freeWallsAround(cell, walls) {
   return adj(cell).map((n) => wallBetween(cell, n)).filter((w) => walls[w] === "0");
 }
-// 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~2칸
+// 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~2칸, 동그라미 말은 ㄱ자로 꼭 2칸
 // 제자리는 안 됨: 꼭 1~2칸 움직여야 함. 내 말이 모두 갇혀서 한 칸도 못 움직이면 내 차례는 저절로 넘어감(finishTurn)
 const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 function movesFrom(state, from) { return reachAll(state, from).filter((c) => c !== from); }
@@ -103,6 +103,25 @@ function reachAll(state, from) {
         const nx = r * N + c;
         if (blocked(state.walls, cur, nx) || occ.has(nx)) break;
         res.add(nx); cur = nx;
+      }
+    }
+    return [...res].filter((c) => freeWallsAround(c, state.walls).length > 0);
+  }
+  // 벽바둑 2의 동그라미 말: 꼭 2칸 — 상하좌우로 한 칸 간 다음, 거기서 반드시 꺾어서 한 칸 (ㄱ자, 결국 대각선 칸에 도착)
+  if (state.v === 2) {
+    const step = (cell, dr, dc) => {
+      const r = Math.floor(cell / N) + dr, c = (cell % N) + dc;
+      if (r < 0 || r >= N || c < 0 || c >= N) return -1;
+      const nx = r * N + c;
+      return blocked(state.walls, cell, nx) || occ.has(nx) ? -1 : nx;
+    };
+    for (const [dr, dc] of DIRS) {
+      const mid = step(from, dr, dc);
+      if (mid < 0) continue;
+      for (const [er, ec] of DIRS) {
+        if (er === dr || ec === dc) continue;   // 같은 방향·되돌아가기 X, 꼭 꺾기
+        const to = step(mid, er, ec);
+        if (to >= 0) res.add(to);
       }
     }
     return [...res].filter((c) => freeWallsAround(c, state.walls).length > 0);
