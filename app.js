@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.02";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.02";
-import * as WG from "./wallgo.js?v=v1.02";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.02";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.02";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.02";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.02";
+import { PUZZLES } from "./puzzles.js?v=v1.03";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.03";
+import * as WG from "./wallgo.js?v=v1.03";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.03";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.03";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.03";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.03";
 
-const VERSION = "v1.02";
+const VERSION = "v1.03";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -2134,7 +2134,8 @@ async function startCube() {
   const reset = cand.length < CUBE_Q;
   if (reset) cand = L.puzzles.map((_, i) => i);
   for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
-  // 한 판 5문제는 되도록 답(큐브 개수)이 서로 다르게
+  // 한 판 5문제는 되도록 답(큐브 개수)이 서로 다르게, 앞 판에서 나온 답도 되도록 피함
+  if (!reset) { const before = new Set(used.map((i) => cubeCount(L.puzzles[i]))); cand.sort((x, y) => before.has(cubeCount(L.puzzles[x])) - before.has(cubeCount(L.puzzles[y]))); }
   const pick = [], got = new Set();
   for (const i of cand) { if (pick.length >= CUBE_Q) break; const n = cubeCount(L.puzzles[i]); if (!got.has(n)) { got.add(n); pick.push(i); } }
   for (const i of cand) { if (pick.length >= CUBE_Q) break; if (!pick.includes(i)) pick.push(i); }
