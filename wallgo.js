@@ -1,7 +1,7 @@
 // 벽바둑 1 — 규칙 엔진과 판 화면 (2~4명)
 // 7×7 판. 2명: 각자 말 4개(2개는 정해진 자리, 2개는 번갈아 직접 놓기, 순서 a→b→b→a)
 //        3~4명: 각자 말 2개(1개는 정해진 자리, 1개는 거꾸로 순서로 직접 놓기)
-// 차례: 말 하나를 0~2칸 이동(상하좌우, 꺾기 가능, 벽·말 통과 불가) → 그 칸의 네 변 중 한 곳에 벽 세우기
+// 차례: 말 하나를 1~2칸 이동(상하좌우, 꺾기 가능, 벽·말 통과 불가, 제자리 안 됨 — 모든 말이 갇혔을 때만 제자리) → 그 칸의 네 변 중 한 곳에 벽 세우기
 // 끝: 서로 다른 편 말이 같은 공간에 없을 때. 내 말만 있는 공간의 칸 수가 점수, 넓은 순서로 등수.
 export const N = 7;
 const HN = (N - 1) * N;          // 가로 벽(위아래 칸 사이) 개수
@@ -86,9 +86,19 @@ export function occupied(stones) {
 export function freeWallsAround(cell, walls) {
   return adj(cell).map((n) => wallBetween(cell, n)).filter((w) => walls[w] === "0");
 }
-// 0~2칸 안에 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~2칸
+// 갈 수 있는 칸 (벽 세울 곳이 있는 칸만). 벽바둑 2의 네모 말은 곧게 1~2칸
+// 제자리는 안 됨: 꼭 1~2칸 움직여야 함. 단, 내 말이 모두 갇혀서 한 칸도 못 움직이면 그때만 제자리에서 벽 세우기
 const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+const ownerOf = (state, cell) => Object.keys(state.stones || {}).find((sd) => (state.stones[sd] || []).includes(cell));
+function movesFrom(state, from) { return reachAll(state, from).filter((c) => c !== from); }
 export function reachable(state, from) {
+  const mv = movesFrom(state, from);
+  if (mv.length) return mv;
+  const side = ownerOf(state, from);
+  const stuck = !side || (state.stones[side] || []).every((c) => c < 0 || !movesFrom(state, c).length);
+  return stuck ? reachAll(state, from).filter((c) => c === from) : [];
+}
+function reachAll(state, from) {
   const occ = occupied(state.stones);
   const res = new Set([from]);
   if (kindOf(state, from) === "s") {
@@ -444,8 +454,12 @@ export class WallBoard {
       this.onHint && this.onHint("벽을 세울 쪽(주황 점선)을 눌러요");
       return;
     }
-    if (mineAt(c)) { this.sel = c; this.dest = null; this.draw(); return; }
-    if (this.sel !== null && c !== null && reachable(m, this.sel).includes(c)) { this.dest = c; this.draw(); return; }
+    if (this.sel !== null && c !== null && reachable(m, this.sel).includes(c)) { this.dest = c; this.draw(); return; }   // 모두 갇혔을 때는 고른 말을 한 번 더 누르면 제자리
+    if (mineAt(c)) {
+      this.sel = c; this.dest = null; this.draw();
+      if (!reachable(m, c).length) this.onHint && this.onHint("이 말은 움직일 곳이 없어요. 다른 말을 골라요");
+      return;
+    }
     if (this.sel === null) this.onHint && this.onHint("먼저 내 말(점이 찍힌 구슬)을 눌러요");
     this.sel = this.dest = null; this.draw();
   }
