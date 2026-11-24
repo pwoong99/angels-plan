@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v3.1";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v3.1";
-import * as WG from "./wallgo.js?v=v3.1";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v3.1";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v3.1";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v3.1";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v3.1";
+import { PUZZLES } from "./puzzles.js?v=v3.11";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v3.11";
+import * as WG from "./wallgo.js?v=v3.11";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v3.11";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v3.11";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v3.11";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v3.11";
 
-const VERSION = "v3.1";
+const VERSION = "v3.11";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -49,6 +49,9 @@ function spotFound(p, round) {
   return t ? [...new Set(t.split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 0))] : [];
 }
 const isWG = (g) => g === "wallgo" || g === "wallgo2";
+// 방마다 쓸 게임: 방 문서 off 칸(끈 게임 이름 목록). 끈 게임은 선생님 게임 고르기·학생 연습·게임 방법에서 빠짐
+const gameOn = (r, g) => !(r && Array.isArray(r.off) && r.off.includes(g));
+const onGames = (r) => { const l = Object.keys(GAMES).filter((g) => gameOn(r, g)); return l.length ? l : Object.keys(GAMES); };
 // 대칭 퍼즐: 단계별 기본 제한 시간(0 = 제한 없음)
 const DEFAULT_STIMES = [60, 60, 90, 120, 150, 180, 240, 300];
 // 방 문서에는 문제 번호만 저장(Firestore는 배열 안의 배열을 못 담음) → 문제 내용은 sym.js에서 꺼냄
@@ -751,6 +754,7 @@ function renderStudent() {
   $("stTeam").classList.toggle("hidden", !tm);
   renderStudentRank();
 
+  applyGameOn(r);
   const playing = r.status === "playing";
   const res = me.result && me.result.round === r.round ? me.result : null;
   if (!res && celebrated !== null && celebrated !== r.round) porongFace("wave");
@@ -800,6 +804,29 @@ function renderStudent() {
       stAnswerBoard.showAnswer(ans);
     }
   }
+}
+
+// 선생님이 끈 게임은 연습 버튼·게임 방법 버튼을 숨기고, 열려 있던 연습 창도 닫음
+const PRAC = [["practiceBtn", "practice", ["fence"]], ["wgPracBtn", "wgPractice", ["wallgo", "wallgo2"]], ["cubePracBtn", "cubePractice", ["cube"]], ["symPracBtn", "symPractice", ["sym"]], ["spotPracBtn", "spotPractice", ["spot"]]];
+let gameOnKey = null;
+function applyGameOn(r) {
+  const key = JSON.stringify((r && r.off) || []);
+  if (key === gameOnKey) return;
+  gameOnKey = key;
+  for (const [btn, ov, games] of PRAC) {
+    const on = games.some((g) => gameOn(r, g));
+    $(btn).classList.toggle("hidden", !on);
+    if (!on && !$(ov).classList.contains("hidden")) {
+      if (ov === "wgPractice") closeWgPractice(); else $(ov).classList.add("hidden");
+      toast("선생님이 이 게임을 껐어요.");
+    }
+  }
+  document.querySelectorAll("[data-how]").forEach((b) => b.classList.toggle("hidden", !gameOn(r, b.dataset.how)));
+  if (EXM.mode === "local" && EXM.game && !gameOn(r, EXM.game)) hideExplain();
+  // 벽바둑 연습: 켜진 쪽만
+  const wv = WP.v;
+  if (!gameOn(r, WP.v === 2 ? "wallgo2" : "wallgo")) WP.v = gameOn(r, "wallgo2") ? 2 : 1;
+  if (!$("wgPractice").classList.contains("hidden")) { if (WP.v !== wv) wpNew(); else $("wpLevels").querySelectorAll("[data-wpv]").forEach((x) => x.classList.toggle("hidden", !gameOn(r, x.dataset.wpv === "2" ? "wallgo2" : "wallgo"))); }
 }
 
 function renderStudentFence(r, me, res) {
@@ -1311,7 +1338,7 @@ function wpNew() {
   clearTimeout(WP.timer); WP.busy = false;
   WP.m = WP.v === 2 ? WG.newMatch2(WP.n) : WG.newMatch(WP.n);
   WP.me = WP.m.sides[Math.floor(Math.random() * WP.n)];
-  $("wpLevels").innerHTML = [1, 2].map((v) => `<button class="pr-lv ${v === WP.v ? "active" : ""}" data-wpv="${v}">벽바둑 ${v}</button>`).join("") + `<span class="pr-gap"></span>` + [2, 3, 4].map((k) => `<button class="pr-lv ${k === WP.n ? "active" : ""}" data-wpn="${k}">${k}명</button>`).join("")
+  $("wpLevels").innerHTML = [1, 2].filter((v) => gameOn(ST.room, v === 2 ? "wallgo2" : "wallgo")).map((v) => `<button class="pr-lv ${v === WP.v ? "active" : ""}" data-wpv="${v}">벽바둑 ${v}</button>`).join("") + `<span class="pr-gap"></span>` + [2, 3, 4].map((k) => `<button class="pr-lv ${k === WP.n ? "active" : ""}" data-wpn="${k}">${k}명</button>`).join("")
     + `<span class="pr-gap"></span>` + WP_LEVELS.map(([k, n]) => `<button class="pr-lv ${k === WP.level ? "active" : ""}" data-wplv="${k}">AI ${n}</button>`).join("");
   $("wpFace").src = "img/porong-wave.jpg";
   wpRender(); wpBot();
@@ -1648,7 +1675,14 @@ function renderTeacher() {
   $("tCount").textContent = T.players.length;
 
   // 게임 고르기
-  $("gameTabs").innerHTML = Object.entries(GAMES).map(([id, g]) =>
+  const ons = onGames(r);
+  if (!playing && !ons.includes(T.game)) { T.game = ons[0]; return renderTeacher(); }
+  $("gameOnBtns").innerHTML = Object.entries(GAMES).map(([id, g]) => {
+    const on = gameOn(r, id), lock = playing && r.game === id;
+    return `<button class="tc-btn game-on ${on ? "active" : ""}" data-gon="${id}" ${lock ? "disabled title=\"지금 하는 게임은 끌 수 없어요\"" : ""}>${on ? "✅" : "⬜"} ${g.icon} ${g.name}</button>`;
+  }).join("");
+  $("gameOnNote").textContent = `켠 게임 ${ons.length}개 · 끈 게임은 학생 연습과 게임 방법에서도 사라져요`;
+  $("gameTabs").innerHTML = Object.entries(GAMES).filter(([id]) => ons.includes(id) || (playing && r.game === id)).map(([id, g]) =>
     `<button class="game-tab ${id === game ? "active" : ""}" data-game="${id}" ${playing ? "disabled" : ""}><span>${g.icon}</span>${g.name}</button>`).join("");
   $("gameDesc").textContent = GAMES[game].desc;
   $("fencePanel").classList.toggle("hidden", game !== "fence");
@@ -2149,6 +2183,18 @@ async function startRound() {
 }
 
 // ----- 교사 버튼 -----
+$("gameOnBtn").addEventListener("click", () => $("gameOnBox").classList.toggle("hidden"));
+$("gameOnBtns").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-gon]");
+  if (!b || b.disabled || !T.room) return;
+  const id = b.dataset.gon, off = new Set(Array.isArray(T.room.off) ? T.room.off : []);
+  if (off.has(id)) off.delete(id);
+  else {
+    if (onGames(T.room).length <= 1) return toast("게임을 하나는 켜 두어야 해요.");
+    off.add(id);
+  }
+  updateDoc(T.roomRef, { off: [...off] }).catch(() => toast("바꾸지 못했어요."));
+});
 $("gameTabs").addEventListener("click", (e) => {
   const b = e.target.closest("[data-game]");
   if (!b || b.disabled) return;

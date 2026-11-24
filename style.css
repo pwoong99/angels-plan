@@ -689,3 +689,9 @@ body.st-playing #ptBoard .spot-view { width: min(48.5vw, calc((100 * var(--vh) -
 }
 body.st-playing #spotArea .game-top { flex-wrap: nowrap; }
 #spotPractice .practice-card { align-items: center; }
+
+/* 이 방에서 쓸 게임 켜기·끄기 */
+.game-pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.game-pick-head h3 { margin: 0; }
+.game-on-box { margin: 8px 0; padding: 10px; border: 2px dashed var(--line); border-radius: 14px; background: #fafbff; }
+.tc-btn.game-on:not(.active) { opacity: .6; }

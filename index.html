@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v3.1">
+<link rel="stylesheet" href="style.css?v=v3.11">
 </head>
 <body>
 
@@ -388,7 +388,11 @@
   <div class="t-grid">
     <div class="t-left">
       <div class="card">
-        <h3>게임 고르기</h3>
+        <div class="game-pick-head"><h3>게임 고르기</h3><button class="btn ghost small" id="gameOnBtn">⚙️ 이 방에서 쓸 게임</button></div>
+        <div id="gameOnBox" class="game-on-box hidden">
+          <div id="gameOnBtns" class="tc-btns"></div>
+          <p class="hint" id="gameOnNote"></p>
+        </div>
         <div id="gameTabs" class="game-tabs"></div>
         <p id="gameDesc" class="game-desc"></p>
         <div id="fencePanel">
@@ -640,6 +644,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v3.1"></script>
+<script type="module" src="app.js?v=v3.11"></script>
 </body>
 </html>
