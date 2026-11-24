@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v3.11";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v3.11";
-import * as WG from "./wallgo.js?v=v3.11";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v3.11";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v3.11";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v3.11";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v3.11";
+import { PUZZLES } from "./puzzles.js?v=v1.0";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.0";
+import * as WG from "./wallgo.js?v=v1.0";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.0";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.0";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.0";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.0";
 
-const VERSION = "v3.11";
+const VERSION = "v1.0";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
