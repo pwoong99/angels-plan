@@ -569,3 +569,6 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 .sym-axis { stroke: #ff7aa2; stroke-width: 4; stroke-dasharray: 10 8; stroke-linecap: round; }
 .sym-tip { margin: 0; color: var(--muted); font-weight: 700; text-align: center; }
 #symPractice .practice-card { align-items: center; }
+
+.fs-btn.on { background: #eaf7ff; border-color: var(--blue); color: var(--blue); }
+@media (max-width: 640px) { .fs-btn { font-size: 0; padding: 6px 10px; } .fs-btn::before { content: "⛶"; font-size: 1rem; } }

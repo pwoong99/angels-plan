@@ -6,14 +6,14 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v2.4";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.4";
-import * as WG from "./wallgo.js?v=v2.4";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.4";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.4";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.4";
+import { PUZZLES } from "./puzzles.js?v=v2.5";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.5";
+import * as WG from "./wallgo.js?v=v2.5";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.5";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.5";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.5";
 
-const VERSION = "v2.4";
+const VERSION = "v2.5";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -38,6 +38,8 @@ const GAMES = {
 const isWG = (g) => g === "wallgo" || g === "wallgo2";
 // 대칭 퍼즐: 단계별 기본 제한 시간(0 = 제한 없음)
 const DEFAULT_STIMES = [60, 60, 90, 120, 150, 180, 240, 300];
+// 방 문서에는 문제 번호만 저장(Firestore는 배열 안의 배열을 못 담음) → 문제 내용은 sym.js에서 꺼냄
+const symPz = (r) => { const q = r && r.sym; if (!q || q.lv === undefined) return null; const L = SYM.levels[q.lv - 1]; return (L && L.puzzles[q.i]) || null; };
 const symLabel = (lv) => { const i = symInfo(lv); return `${i.name} · 조각 ${i.k}개 · ${i.size}`; };
 const newWG = (game, n, extra) => (game === "wallgo2" ? WG.newMatch2(n, extra) : WG.newMatch(n, extra));
 // 큐브 세기: 한 판 문제 수와 단계별 기본 시간(5문제 전체)
@@ -727,9 +729,9 @@ function renderStudent() {
       ? (t.ok ? "멋져! 천사 날개가 반짝반짝해! 뿅! 🎉" : "괜찮아! 다음 게임에서 꼭 해낼 수 있어!")
       : r.round > 0 ? "다음 게임을 기다리는 중이에요!" : "선생님이 게임을 시작하면 열려요!";
     const cubeEnd = r.status === "ended" && r.round > 0 && r.game === "cube" && r.cube;
-    const symEnd = r.status === "ended" && r.round > 0 && r.game === "sym" && r.sym;
+    const symEnd = r.status === "ended" && r.round > 0 && r.game === "sym" && symPz(r);
     $("stSymAns").style.display = symEnd ? "" : "none";
-    if (symEnd && stSymAnsKey !== r.round) { stSymAnsKey = r.round; stSymAns.load(r.sym, answerState(r.sym), { locked: true }); }
+    if (symEnd && stSymAnsKey !== r.round) { stSymAnsKey = r.round; stSymAns.load(symPz(r), answerState(symPz(r)), { locked: true }); }
     const ans = r.status === "ended" && r.round > 0 && r.game === "fence" ? answerOf(r) : null;
     $("stAnswerCard").hidden = !ans && !cubeEnd && !symEnd;
     $("stAnswerBoard").style.display = ans ? "" : "none";
@@ -833,7 +835,7 @@ const stSymAns = new SymBoard($("stSymAns"));
 let stSymAnsKey = null;
 const SYM_WHY = { overlap: "조각끼리 겹쳐 있어요.", apart: "조각이 모두 붙어 있어야 해요.", notsym: "아직 선대칭이 아니에요. 접었을 때 꼭 맞는 모양을 만들어 봐요!", out: "" };
 function renderStudentSym(r, me, res) {
-  const pz = r.sym;
+  const pz = symPz(r);
   if (!pz) return;
   const submitted = !!(me.sub && me.sub.round === r.round);
   const end = endAtOf(r), timeUp = end !== null && now() > end;
@@ -876,9 +878,10 @@ function symChange(st, res) {
 }
 $("syReset").addEventListener("click", () => {
   const r = ST.room;
-  if (!r || r.game !== "sym" || !r.sym || syBoard.locked) return;
-  syBoard.load(r.sym, initialState(r.sym));
-  symChange(syBoard.state(), checkSym(r.sym, syBoard.state()));
+  const pz = symPz(r);
+  if (!r || r.game !== "sym" || !pz || syBoard.locked) return;
+  syBoard.load(pz, initialState(pz));
+  symChange(syBoard.state(), checkSym(pz, syBoard.state()));
 });
 
 // ----- 큐브 세기 (학생) -----
@@ -1555,13 +1558,13 @@ function renderTeacher() {
   // 울타리치기 문제판 / 벽바둑 대결 현황
   const showPuzzle = r.round > 0 && r.game === "fence" && r.puzzle;
   const showCube = r.round > 0 && r.game === "cube" && r.cube;
-  const showSym = r.round > 0 && r.game === "sym" && r.sym;
+  const showSym = r.round > 0 && r.game === "sym" && symPz(r);
   $("tPuzzleCard").classList.toggle("hidden", !showPuzzle && !showCube && !showSym);
   $("tSym").style.display = showSym ? "" : "none";
   if (showSym) {
     $("tRoundInfo").textContent = `${r.round}라운드 · 대칭 퍼즐 · ${symLabel(r.level)}${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
     const k = r.round + ":" + T.answer;
-    if (T.symKey !== k) { T.symKey = k; tSymBoard.load(r.sym, T.answer ? answerState(r.sym) : initialState(r.sym), { locked: true }); }
+    if (T.symKey !== k) { T.symKey = k; const pz = symPz(r); tSymBoard.load(pz, T.answer ? answerState(pz) : initialState(pz), { locked: true }); }
     $("answerBtn").classList.toggle("hidden", r.status !== "ended");
     $("answerBtn").textContent = T.answer ? "🙈 정답 예시 숨기기" : "✅ 정답 예시 보기";
   }
@@ -1748,7 +1751,8 @@ async function gradeOne(p, round) {
   if (r.game === "sym") {
     const end = endAtOf(r);
     const late = end !== null && ms(p.sub.at) > end + GRACE_MS;
-    const ok = !late && checkSym(r.sym, decodeState(p.sub.edges, r.sym.p.length)).ok;
+    const pz = symPz(r);
+    const ok = !late && !!pz && checkSym(pz, decodeState(p.sub.edges, pz.p.length)).ok;
     let rank = 0, points = 0;
     if (ok) { rank = correctCount(round) + 1; points = calcPoints(pts(), rank, r.level, "sym"); }
     const result = { round, game: "sym", correct: ok, rank, points, reason: ok ? "ok" : late ? "late" : "wrong" };
@@ -1862,7 +1866,7 @@ async function startSym() {
   if (reset) cand = L.puzzles.map((_, i) => i);
   const pick = cand[Math.floor(Math.random() * cand.length)];
   await updateDoc(T.roomRef, {
-    status: "playing", game: "sym", round: (r.round || 0) + 1, level: lv, sym: L.puzzles[pick],
+    status: "playing", game: "sym", round: (r.round || 0) + 1, level: lv, sym: { lv, i: pick },
     startAt: serverTimestamp(), duration: stimes()[lv - 1], explain: deleteField(),
     [`used.S${lv}`]: reset ? [pick] : arrayUnion(pick)
   });
@@ -2208,3 +2212,23 @@ $("adminModal").addEventListener("click", async (e) => {
     }
   } catch (err) { console.error(err); toast("처리하지 못했어요. 보안 규칙을 게시했는지 확인해 주세요."); }
 });
+
+// ---------- 전체화면 (위쪽 막대의 버튼) ----------
+function fsEl() { return document.fullscreenElement || document.webkitFullscreenElement; }
+function fsSync() {
+  const on = !!fsEl();
+  document.querySelectorAll(".fs-btn").forEach((b) => { b.textContent = on ? "⛶ 전체화면 끄기" : "⛶ 전체화면"; b.classList.toggle("on", on); });
+}
+async function fsToggle() {
+  const d = document.documentElement;
+  try {
+    if (fsEl()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else if (d.requestFullscreen) await d.requestFullscreen({ navigationUI: "hide" });
+    else if (d.webkitRequestFullscreen) d.webkitRequestFullscreen();
+    else toast("이 기기에서는 전체화면을 지원하지 않아요.");
+  } catch (e) { console.warn(e); toast("전체화면으로 바꾸지 못했어요."); }
+}
+document.querySelectorAll(".fs-btn").forEach((b) => b.addEventListener("click", fsToggle));
+document.addEventListener("fullscreenchange", fsSync);
+document.addEventListener("webkitfullscreenchange", fsSync);
+if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) document.querySelectorAll(".fs-btn").forEach((b) => (b.style.display = "none"));
