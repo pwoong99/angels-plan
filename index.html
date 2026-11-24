@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v2.7">
+<link rel="stylesheet" href="style.css?v=v2.8">
 </head>
 <body>
 
@@ -278,11 +278,17 @@
     </div>
     <div class="pr-levels" id="cpLevels"></div>
     <div class="pr-coach"><img class="porong mini" src="img/porong-oh.jpg" alt="포롱이"><div class="bubble" id="cpMsg"></div></div>
-    <div class="cube-wrap" id="cpPic"></div>
-    <div class="cp-top" id="cpTop"></div>
-    <div class="cube-ask"><span>큐브는 모두</span><b id="cpIn">?</b><span>개</span></div>
-    <div class="keypad" id="cpPad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="del" class="del">⌫</button><button data-k="0">0</button><button data-k="ok" class="ok">확인</button></div>
-    <button class="btn sun big hidden" id="cpNext">🔄 다음 문제</button>
+    <div class="cube-play cp-play">
+     <div class="cp-left">
+      <div class="cube-wrap" id="cpPic"></div>
+      <div class="cp-top" id="cpTop"></div>
+     </div>
+     <div class="cube-side">
+      <div class="cube-ask"><span>큐브는 모두</span><b id="cpIn">?</b><span>개</span></div>
+      <div class="keypad" id="cpPad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="del" class="del">⌫</button><button data-k="0">0</button><button data-k="ok" class="ok">확인</button></div>
+      <button class="btn sun big hidden" id="cpNext">🔄 다음 문제</button>
+     </div>
+    </div>
   </div>
 </div>
 
@@ -589,6 +595,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v2.7"></script>
+<script type="module" src="app.js?v=v2.8"></script>
 </body>
 </html>

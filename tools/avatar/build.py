@@ -192,16 +192,16 @@ for i,(x,y,w,h) in enumerate(bbx):
     if i==11: c=hero_fix(c)
     rg,sk,ax,ay,span=outfit_layers(c,HANDS+NECK+EXTRA.get(i,[]))
     body_add(rg,sk,ax,ay,span,tune('body',i+1))
-# ---------- wings ----------
-wa=load('wings')
-WX=[(90,345),(410,825),(860,1350),(1360,1975),(1985,2745)]
+# ---------- wings ---------- (10단계 그림 한 장: 1~5 첫 줄, 6~8 둘째 줄, 황금·전설 셋째 줄)
+wa=load('wings10')
+WBOX=[(196,199,305,156),(649,178,393,203),(1119,166,503,220),(1663,151,432,305),(2138,119,522,287),
+      (88,528,649,385),(1005,528,737,386),(1949,519,716,389),(983,1010,783,385),(1823,956,851,454)]
 WINGS=[]
-for k,(x0,x1) in enumerate(WX):
-    c=wa[380:1050,x0:x1]; rg=rgba(c,bg_mask(c,white=240))
-    al=rg[...,3]>0; cols=al.sum(0)
-    w=c.shape[1]; mid=w//2
-    # gap column near middle
-    win=cols[int(w*0.35):int(w*0.65)]; g=int(w*0.35)+int(np.argmin(win))
+for (x,y,w,h) in WBOX:
+    P=24; x0,y0=max(0,x-P),max(0,y-P)
+    c=wa[y0:y+h+P,x0:x+w+P]; rg=rgba(c,bg_mask(c,white=240))
+    al=rg[...,3]>0; cols=al.sum(0); W_=c.shape[1]
+    win=cols[int(W_*0.35):int(W_*0.65)]; g=int(W_*0.35)+int(np.argmin(win))
     Lh=rg.copy(); Lh[:,g:,3]=0; Rh=rg.copy(); Rh[:,:g,3]=0
     WINGS.append((Lh,Rh))
 
@@ -237,7 +237,7 @@ for i,hh in enumerate(PARTS['hair']):
 for i,ls in enumerate(PARTS['body']):
     M['body'].append([absl(l,'b%d%s'%(i,'sp'[q])) for q,l in enumerate(ls)])
 # wings export
-WL=[(0,150,215,955),(0,200,200,965),(1,230,185,980),(1,280,165,995),(2,300,150,1010),(3,360,125,1040),(3,420,110,1050),(3,450,110,1050),(4,500,100,1060),(4,580,90,1070)]
+WL=[(0,150,210,950),(1,200,200,960),(2,250,185,975),(3,250,170,1010),(4,300,150,1010),(5,400,125,1050),(6,450,115,1060),(7,500,105,1065),(8,560,95,1070),(9,650,85,1085)]
 def rainbow(rg):
     r=rg.copy().astype(np.float32); h,w=r.shape[:2]
     hue=np.tile(np.linspace(0,300,w,dtype=np.float32),(h,1))
@@ -256,8 +256,6 @@ def starlight(rg):
     return r.clip(0,255).astype(np.uint8)
 for lv,(k,tw,G,WB) in enumerate(WL):
     Lh,Rh=WINGS[k]
-    if lv==6: Lh,Rh=rainbow(Lh),rainbow(Rh)
-    if lv==7: Lh,Rh=starlight(Lh),starlight(Rh)
     row=[]
     for side,hh in (('l',Lh),('r',Rh)):
         x0,y0,x1,y1=tight(hh); r=hh[y0:y1,x0:x1]

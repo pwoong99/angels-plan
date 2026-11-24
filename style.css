@@ -586,7 +586,7 @@ body.st-playing #student .bar .chip { padding: 5px 12px; }
 body.st-playing .game { padding: 6px 10px 8px; gap: 6px; }
 body.st-playing .game-area { gap: 6px; }
 body.st-playing .game-msg:empty { display: none; }
-@media (min-width: 700px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 440px) {
   /* 울타리치기 */
   body.st-playing #stBoard.board { max-width: min(96vw, 980px); max-height: calc(100 * var(--vh) - 215px); }
   body.st-playing .tools .btn { padding: 12px 20px; font-size: 1.1rem; }
@@ -605,18 +605,18 @@ body.st-playing .game-msg:empty { display: none; }
   .av-opt .av-mini { width: 96px; height: 120px; }
 }
 /* 세로 화면: 그림 위, 숫자 버튼 아래 */
-@media (min-width: 700px) and (orientation: portrait) {
+@media (min-width: 600px) and (orientation: portrait) {
   body.st-playing #cbPic.cube-wrap { width: min(94vw, 760px); height: calc(100 * var(--vh) - 560px); min-height: 360px; }
 }
 /* 가로 화면: 그림 왼쪽 크게, 답 입력 오른쪽 */
-@media (min-width: 900px) and (orientation: landscape) {
+@media (min-width: 600px) and (orientation: landscape) {
   body.st-playing .cube-play { flex-direction: row; justify-content: center; align-items: stretch; gap: 18px; }
   body.st-playing #cbPic.cube-wrap { width: auto; flex: 1; max-width: 680px; height: calc(100 * var(--vh) - 150px); }
   body.st-playing .cube-side { justify-content: center; min-width: 330px; }
   #cubePractice .cube-wrap { height: min(300px, 34vh); }
 }
 /* 연습 창도 태블릿 화면에 맞게 */
-@media (min-width: 700px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 440px) {
   .practice-card { max-height: calc(100 * var(--vh) - 24px); overflow: auto; }
   #symPractice .sym-wrap { width: min(92vw, calc((100 * var(--vh) - 330px) * 1.32 + 16px)); }
 }
@@ -628,3 +628,21 @@ body.st-playing .game-msg:empty { display: none; }
 .ws-row { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 2px 8px; margin: 0; font-weight: 700; font-size: .9rem; }
 .ws-row input { padding: 6px 8px; font-size: 1rem; margin: 0; }
 .ws-row small { grid-column: 1 / -1; color: var(--muted); font-weight: 600; }
+
+/* 키 작은 가로 화면(높이 600px 아래 태블릿): 숫자판을 조금 작게 해서 한 화면에 */
+@media (orientation: landscape) and (max-height: 620px) and (min-width: 600px) {
+  .keypad { grid-template-columns: repeat(3, 84px); gap: 8px; }
+  .keypad button { height: 58px; font-size: 1.6rem; }
+  .cube-ask b { font-size: 2.2rem; }
+  body.st-playing #cbPic.cube-wrap { height: calc(100 * var(--vh) - 120px); }
+}
+
+/* 큐브 세기 연습 창도 가로 화면에서 그림 왼쪽 · 숫자판 오른쪽 */
+.cp-left { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+@media (min-width: 600px) and (orientation: landscape) {
+  .cp-play { flex-direction: row; justify-content: center; align-items: flex-start; gap: 18px; }
+  .cp-play .cp-left { flex: 1; max-width: 620px; }
+  .cp-play .cube-wrap { width: 100%; height: min(380px, calc(100 * var(--vh) - 280px)); }
+  .cp-play .cube-side { min-width: 300px; }
+  #cubePractice .practice-card { max-width: min(1040px, 96vw); width: 96vw; }
+}
