@@ -26,6 +26,12 @@ service cloud.firestore {
         && hashing.sha256(request.resource.data.k).toHexString().lower() == 'f27f4df9c0ac06cc9008fa8dade0bedbff942573d413bb5c73b86f7ef24bac8a';
     }
 
+    // 앱 전체 설정(날개 단계 기준 점수 등): 누구나 읽고, 관리자만 바꿈
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
     // 선생님 등록 신청: 누구나 새 이름으로 신청(승인 전 상태로만), 승인·취소·삭제는 관리자만
     match /teacherAccounts/{name} {
       allow read: if signedIn();

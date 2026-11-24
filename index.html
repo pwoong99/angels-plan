@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v2.6">
+<link rel="stylesheet" href="style.css?v=v2.7">
 </head>
 <body>
 
@@ -135,7 +135,8 @@
       <span class="chip team-chip hidden" id="stTeam"></span>
     </div>
     <div class="bar-right">
-      <span class="chip score">⭐ <b id="stScore">0</b>점</span>
+      <span class="chip score" title="오늘 점수 (순위판 점수)">⭐ 오늘 <b id="stScore">0</b>점</span>
+      <span class="chip total" title="총 점수 (날개가 자라는 점수, 계속 쌓임)">🪽 총 <b id="stTotal">0</b>점</span>
       <span class="chip rank">🏅 <b id="stRankTxt">-</b></span>
       <button class="btn ghost small fs-btn" title="전체화면">⛶ 전체화면</button>
       <button class="btn ghost small" id="stLeave">나가기</button>
@@ -337,10 +338,10 @@
       <span class="chip who-chip" id="tWho"></span>
     </div>
     <div class="bar-right">
-      <button class="btn ghost small hidden" id="tAdminBtn">👑 교사 승인 <b id="tPendingCnt" class="pend-cnt"></b></button>
+      <button class="btn ghost small hidden" id="tAdminBtn">👑 관리자 <b id="tPendingCnt" class="pend-cnt"></b></button>
       <button class="btn ghost small" id="tRankBtn">🏆 순위판</button>
       <button class="btn ghost small" id="tPtsBtn">⚙️ 점수 설정</button>
-      <button class="btn ghost small" id="tResetBtn">✨ 새 이벤트 시작</button>
+      <button class="btn ghost small" id="tResetBtn" title="오늘 점수(순위판)만 0으로. 총 점수와 날개는 그대로">🔄 오늘 점수 새로</button>
       <button class="btn ghost small" id="tNewRoomBtn">🚪 방 바꾸기·메모</button>
       <button class="btn ghost small fs-btn" title="전체화면">⛶ 전체화면</button>
       <button class="btn ghost small" id="tLeave">나가기</button>
@@ -500,7 +501,12 @@
 <!-- 관리자: 교사 승인 -->
 <div id="adminModal" class="overlay hidden">
   <div class="modal wide">
-    <div class="av-head"><h3>👑 교사 승인 관리</h3><button class="btn ghost small" id="adminClose">닫기</button></div>
+    <div class="av-head"><h3>👑 관리자</h3><button class="btn ghost small" id="adminClose">닫기</button></div>
+    <h4>🪽 날개 단계 기준 점수</h4>
+    <p class="hint">학생의 <b>총 점수</b>가 이 점수를 넘으면 날개가 한 단계 자라요. 모든 방에 똑같이 적용돼요. 한 라운드는 보통 2~20점(평균 10점 안팎)이라, 기본값으로는 전설의 날개까지 약 100라운드가 걸려요.</p>
+    <div id="wingSet" class="wing-set"></div>
+    <div class="modal-btns"><button class="btn ghost" id="wingDefault">기본값으로</button><button class="btn primary" id="wingSave">날개 기준 저장</button></div>
+    <h4>👩‍🏫 교사 승인</h4>
     <p class="hint">등록 신청한 선생님을 승인하면 그 이름과 비밀번호로 입장할 수 있어요. 승인을 취소하면 바로 입장이 막혀요.</p>
     <h4>⏳ 승인 대기</h4>
     <div id="adminPending" class="acc-list"></div>
@@ -528,16 +534,17 @@
 <div id="ptsModal" class="overlay hidden">
   <div class="modal wide">
     <h3>⚙️ 점수 설정</h3>
-    <h4>🧩 울타리치기</h4>
-    <p class="hint">시간 안에 맞히면 <b>기본 점수</b>를 받고, 빨리 맞힌 학생은 <b>보너스</b>를 더 받아요.<br>
-      (보너스 등수가 5명이면 1등 +5, 2등 +4 … 5등 +1)<br>
-      단계 배율을 켜면 어려운 단계일수록 점수가 커져요.</p>
+    <p class="hint">모든 게임이 비슷한 크기의 점수를 주도록 맞춰 두었어요. 보통 단계에서 1등은 약 20점, 틀려도 참여 점수를 받아요.</p>
+    <h4>🧩 혼자 푸는 게임 (울타리치기 · 큐브 세기 · 대칭 퍼즐)</h4>
+    <p class="hint">맞히면 <b>기본 점수</b>, 빨리 맞힌 학생은 <b>보너스</b>를 더 받아요 (5등까지면 1등 +5 … 5등 +1).<br>
+      큐브 세기는 5문제를 다 맞혀야 보너스, 일부만 맞히면 기본 점수 × 맞힌 비율이에요.</p>
     <label>기본 점수 (맞히면) <input id="ptsBase" type="number" min="1" max="100"></label>
     <label>보너스 받는 등수 (몇 등까지) <input id="ptsTop" type="number" min="0" max="30"></label>
+    <label>참여 점수 (틀리거나 시간 초과여도) <input id="ptsPart" type="number" min="0" max="50"></label>
     <label class="check"><input id="ptsMult" type="checkbox"> 단계 배율 쓰기
-      <small>연습 ×0.5 · 1~2단계 ×1 · 3~4단계 ×1.5 · 5~6단계 ×2 · 7~8단계 ×3</small></label>
+      <small>연습 ×0.6 · 쉬운 단계 ×0.8 · 보통 ×1 · 어려운 단계 ×1.2 · 가장 어려운 단계 ×1.5</small></label>
     <p class="hint" id="ptsPreview"></p>
-    <h4>🧱 벽바둑 1</h4>
+    <h4>🧱 대결 게임 (벽바둑 1 · 2)</h4>
     <div class="wg-pts">
       <label>1등(승리) <input id="wgWin" type="number" min="0" max="100"></label>
       <label>중간·무승부 <input id="wgDraw" type="number" min="0" max="100"></label>
@@ -545,6 +552,7 @@
     </div>
     <p class="hint">3~4명 조에서는 1등이 승리 점수, 꼴찌가 패배(참여) 점수, 그 사이 등수가 중간 점수를 받아요. 모두 같은 땅이면 무승부예요.</p>
     <div class="modal-btns">
+      <button class="btn ghost" id="ptsDefault">기본값으로</button>
       <button class="btn ghost" id="ptsCancel">취소</button>
       <button class="btn primary" id="ptsSave">저장</button>
     </div>
@@ -581,6 +589,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v2.6"></script>
+<script type="module" src="app.js?v=v2.7"></script>
 </body>
 </html>

@@ -620,3 +620,11 @@ body.st-playing .game-msg:empty { display: none; }
   .practice-card { max-height: calc(100 * var(--vh) - 24px); overflow: auto; }
   #symPractice .sym-wrap { width: min(92vw, calc((100 * var(--vh) - 330px) * 1.32 + 16px)); }
 }
+
+/* 오늘 점수 · 총 점수 */
+.chip.total { background: #eef0ff; color: #5a4fcf; }
+.rank-list .sc small, #tRankList .sc small { display: block; font-family: inherit; font-size: .72rem; color: var(--muted); font-weight: 700; text-align: right; }
+.wing-set { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }
+.ws-row { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 2px 8px; margin: 0; font-weight: 700; font-size: .9rem; }
+.ws-row input { padding: 6px 8px; font-size: 1rem; margin: 0; }
+.ws-row small { grid-column: 1 / -1; color: var(--muted); font-weight: 600; }

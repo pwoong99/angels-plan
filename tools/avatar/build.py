@@ -237,7 +237,7 @@ for i,hh in enumerate(PARTS['hair']):
 for i,ls in enumerate(PARTS['body']):
     M['body'].append([absl(l,'b%d%s'%(i,'sp'[q])) for q,l in enumerate(ls)])
 # wings export
-WL=[(0,170,215,960),(1,230,185,980),(2,290,150,1010),(3,345,120,1040),(3,410,110,1050),(3,450,110,1050),(4,500,100,1060),(4,570,90,1070)]
+WL=[(0,150,215,955),(0,200,200,965),(1,230,185,980),(1,280,165,995),(2,300,150,1010),(3,360,125,1040),(3,420,110,1050),(3,450,110,1050),(4,500,100,1060),(4,580,90,1070)]
 def rainbow(rg):
     r=rg.copy().astype(np.float32); h,w=r.shape[:2]
     hue=np.tile(np.linspace(0,300,w,dtype=np.float32),(h,1))
@@ -247,9 +247,17 @@ def rainbow(rg):
     light=(V>0.6)[...,None]
     r[...,:3]=np.where(light,r[...,:3]*col,r[...,:3])
     return r.clip(0,255).astype(np.uint8)
+def starlight(rg):
+    r=rg.copy().astype(np.float32)
+    V=r[...,:3].max(2)/255
+    light=(V>0.6)[...,None]
+    tint=np.array([200,205,255],np.float32)/255
+    r[...,:3]=np.where(light,r[...,:3]*tint,r[...,:3])
+    return r.clip(0,255).astype(np.uint8)
 for lv,(k,tw,G,WB) in enumerate(WL):
     Lh,Rh=WINGS[k]
-    if lv==5: Lh,Rh=rainbow(Lh),rainbow(Rh)
+    if lv==6: Lh,Rh=rainbow(Lh),rainbow(Rh)
+    if lv==7: Lh,Rh=starlight(Lh),starlight(Rh)
     row=[]
     for side,hh in (('l',Lh),('r',Rh)):
         x0,y0,x1,y1=tight(hh); r=hh[y0:y1,x0:x1]

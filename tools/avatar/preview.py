@@ -45,7 +45,7 @@ if __name__=='__main__':
     what=sys.argv[1]; n=len(M[what]) if what in M else 8
     key={'skin':'skin','hairColor':'hairColor'}.get(what,what)
     avs=[]
-    for i in range(n if what not in('skin','hairColor','wings') else {'skin':8,'hairColor':12,'wings':8}[what]):
+    for i in range(n if what not in('skin','hairColor','wings') else {'skin':8,'hairColor':12,'wings':10}[what]):
         a=dict(base); 
         if what=='wings': a['lv']=i
         else: a[key]=i
