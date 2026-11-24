@@ -6,14 +6,14 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v2.9";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.9";
-import * as WG from "./wallgo.js?v=v2.9";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.9";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.9";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v2.9";
+import { PUZZLES } from "./puzzles.js?v=v2.10";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.10";
+import * as WG from "./wallgo.js?v=v2.10";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.10";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.10";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v2.10";
 
-const VERSION = "v2.9";
+const VERSION = "v2.10";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -249,7 +249,7 @@ function avOf(p) {
   if (p && p.av) return p.av;
   let h = 0; const n = (p && (p.name || p.id)) || "";
   for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const a = {}; PART_ORDER.forEach((k, i) => (a[k] = (h >>> (i * 3)) % PARTS[k].n));
+  const a = {}; PART_ORDER.forEach((k, i) => { const o = shownOptions(k); a[k] = o[(h >>> (i * 3)) % o.length]; });
   return a;
 }
 // 날개 기준: 총 점수 (예전 학생은 총 점수가 없으면 이번 점수)
@@ -1016,7 +1016,7 @@ function renderAvatarModal() {
   $("avWingNote").textContent = `지금 날개: ${info.name} · 게임에서 점수를 모으면 날개가 자라요!`;
   $("avTabs").innerHTML = PART_ORDER.map((k) => `<button class="av-tab ${k === AV.tab ? "active" : ""}" data-avtab="${k}">${PARTS[k].name}</button>`).join("");
   let h = "";
-  for (let i = 0; i < PARTS[AV.tab].n; i++) {
+  for (const i of shownOptions(AV.tab)) {
     const a = { ...AV.draft, [AV.tab]: i };
     h += `<button class="av-opt ${AV.draft[AV.tab] === i ? "active" : ""}" data-avopt="${i}"><span class="av-mini">${avatarSVG(a, score, { view: AV.tab === "body" ? "0 0 120 150" : "14 2 92 96" })}</span>${esc(OPTION_LABELS[AV.tab][i])}</button>`;
   }
