@@ -89,8 +89,10 @@ for i,(x,y,w,h) in enumerate(mb):
 ha=load('hair'); hb=rowsort(comps(SRC+'hair.png',5),380)
 HAIR_S=2.02
 EAR_HAIRS=set()
+HOLEINFO={}
+COLCUT={15,17}
+PAINT={8:[(122,246,20,33)]}  # 포니테일 안쪽에 그려진 귀를 머리카락으로 덮음
 MANUAL={4:dict(ears=[(4,178,30,232),(264,178,292,232)],cut=(258,62,240),box=[(212,232,262,330)],wipe=[(200,232,257,330)]),
- 8:dict(ears=[(88,178,122,236)],cut=None),
  11:dict(ears=[(8,238,36,292),(294,238,326,292)],cut=None),
  12:dict(ears=[(248,172,286,226)],cut=(250,72,330)),
  14:dict(ears=[(12,168,46,222),(294,168,328,222)],cut=(245,62,270))}
@@ -104,7 +106,7 @@ for i,(x,y,w,h) in enumerate(hb):
     border=set(np.unique(np.concatenate([lab[0],lab[-1],lab[:,0],lab[:,-1]])))
     Wc=c.shape[1]
     holes=[j for j in range(1,n) if j not in border and st[j,4]>300 and 0.25*Wc<cen[j][0]<0.75*Wc]
-    holes=holes if any(st[j,4]>8000 for j in holes) else []
+    holes=[max(holes,key=lambda j:st[j,4])] if any(st[j,4]>8000 for j in holes) else []
     al=rg[...,3]>0
     rows=al.sum(1); mxw=rows.max()
     top=int(np.argmax(rows>=0.5*mxw))
@@ -132,6 +134,10 @@ for i,(x,y,w,h) in enumerate(hb):
             er=box&((Vv2>=0.93)|(dist>7))
             rg[...,3]=np.where(er,0,rg[...,3])
         holes=[]
+    for (ex,ey,rx,ry) in PAINT.get(i,[]):
+        yy_,xx_=np.mgrid[0:c.shape[0],0:c.shape[1]]
+        pm=((xx_-ex)/rx)**2+((yy_-ey)/ry)**2<=1
+        rg[pm,:3]=214; rg[pm,3]=255
     front=rg.copy()
     if i in MANUAL and MANUAL[i]['cut']:
         cy,cx0,cx1=MANUAL[i]['cut']; front[cy:,cx0:cx1,3]=0
@@ -143,7 +149,12 @@ for i,(x,y,w,h) in enumerate(hb):
         hx=min(st[j,0] for j in holes); hy=min(st[j,1] for j in holes)
         hx1=max(st[j,0]+st[j,2] for j in holes); hy1=max(st[j,1]+st[j,3] for j in holes)
         yy,xx=np.mgrid[0:c.shape[0],0:c.shape[1]]
-        cut=(yy>=hy1-14)&(xx>=hx)&(xx<=hx1)
+        if i in COLCUT:
+            hm=np.isin(lab,holes); low=np.full(c.shape[1],10**6)
+            cols_=np.where(hm.any(0))[0]
+            for xc in cols_: low[xc]=np.where(hm[:,xc])[0].max()-10
+            cut=(yy>=low[None,:])
+        else: cut=(yy>=hy1-14)&(xx>=hx)&(xx<=hx1)
         front[...,3]=np.where(cut,0,front[...,3])
     if False and ears:
         ex0=min(st[j,0] for j in ears)-6; ex1=max(st[j,0]+st[j,2] for j in ears)+6
@@ -155,6 +166,7 @@ for i,(x,y,w,h) in enumerate(hb):
         front[...,3]=np.where(cut2,0,front[...,3])
     t=tune('hair',i); s=HAIR_S*t.get('s',1)
     ox=BASE['cx']+t.get('dx',0); oy=BASE['top']-30+t.get('dy',0)
+    if holes: HOLEINFO[i]=dict(x0=ox+(hx-cx)*s,x1=ox+(hx1-cx)*s,y0=oy+(hy-top)*s,y1=oy+(hy1-top)*s,s=s)
     add('hair',dict(back=L(rg,ox,oy,s,'hair',cx,top),front=L(front,ox,oy,s,'hair',cx,top),hole=bool(holes)))
 # ---------- body ----------
 ba=load('body'); bbx=rowsort(comps(SRC+'body.png',25),500)
@@ -267,3 +279,4 @@ for lv,(k,tw,G,WB) in enumerate(WL):
         row.append(dict(f='w%d%s'%(lv,side),x=round(VX(bx),2),y=round(VY(by),2),w=w,h=h,k='p'))
     M['wings'].append(row)
 json.dump(M,open(OUT+'manifest.json','w'))
+json.dump(dict(hole={k:v for k,v in HOLEINFO.items()},face=FACE_ANCH),open('/home/claude/parts/dbg/geo.json','w'),default=float)
