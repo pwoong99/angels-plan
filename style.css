@@ -646,3 +646,46 @@ body.st-playing .game-msg:empty { display: none; }
   .cp-play .cube-side { min-width: 300px; }
   #cubePractice .practice-card { max-width: min(1040px, 96vw); width: 96vw; }
 }
+
+/* ===== 달라진 그림 찾기 ===== */
+.spot-play { display: flex; gap: 10px; justify-content: center; align-items: center; width: 100%; }
+.spot-view { position: relative; flex: 0 0 auto; width: min(46vw, 520px); aspect-ratio: 1200 / 896; overflow: hidden; background: #fff;
+  border: 3px solid var(--line); border-radius: 16px; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; transition: border-color .2s; }
+.spot-inner { position: absolute; inset: 0; transform-origin: 0 0; }
+.spot-inner img, .spot-inner svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
+.spot-tag { position: absolute; left: 8px; top: 8px; padding: 2px 10px; border-radius: 999px; background: rgba(255, 255, 255, .88); font-size: .8rem; font-weight: 800; color: var(--muted); pointer-events: none; }
+.spot-view.chg .spot-tag { color: #d9480f; }
+.spot-play.zoomed .spot-view { cursor: grab; }
+.spot-play.locked .spot-view { cursor: default; }
+.spot-play.wrong .spot-view { border-color: #ef4444; animation: spotShake .3s; }
+@keyframes spotShake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.spot-view ellipse { fill: none; vector-effect: non-scaling-stroke; }
+.spot-view ellipse.spot-ok { stroke: #16a34a; stroke-width: 5; fill: rgba(34, 197, 94, .12); }
+.spot-view ellipse.spot-ok.fresh { animation: spotPop .45s ease-out; transform-box: fill-box; transform-origin: center; }
+.spot-view ellipse.spot-miss { stroke: #f97316; stroke-width: 5; stroke-dasharray: 10 6; fill: rgba(249, 115, 22, .12); }
+@keyframes spotPop { 0% { transform: scale(1.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.spot-x circle { fill: rgba(239, 68, 68, .2); stroke: #ef4444; vector-effect: non-scaling-stroke; stroke-width: 4; }
+.spot-x path { stroke: #ef4444; stroke-linecap: round; fill: none; }
+.spot-zoom { white-space: nowrap; }
+/* 작은 판(선생님 화면·정답·설명): 두 그림을 나란히 */
+.spot-small.spot-play { flex-direction: row; gap: 6px; }
+.spot-small .spot-view { width: calc(50% - 3px); border-width: 2px; border-radius: 10px; }
+.spot-small .spot-tag { font-size: .65rem; padding: 1px 6px; left: 4px; top: 4px; }
+#exSpot { width: min(720px, 100%); }
+#stSpotAns, #tSpot { margin-top: 6px; }
+/* 연습 창 */
+.spot-prac { width: 96vw; max-width: 1100px; }
+#ppBoard .spot-view { width: min(44vw, calc((100 * var(--vh) - 340px) * 1.339)); }
+/* 세로 화면·좁은 화면: 위아래로 */
+@media (orientation: portrait), (max-width: 640px) {
+  .spot-play:not(.spot-small) { flex-direction: column; }
+  .spot-play:not(.spot-small) .spot-view { width: min(94vw, calc((100 * var(--vh) - 380px) / 2 * 1.339)); }
+  #ppBoard .spot-view { width: min(88vw, calc((100 * var(--vh) - 400px) / 2 * 1.339)); }
+}
+/* 게임 중: 남은 화면에 꽉 차게 (가로면 나란히, 세로면 위아래) */
+body.st-playing #ptBoard .spot-view { width: min(48.5vw, calc((100 * var(--vh) - 125px) * 1.339)); }
+@media (orientation: portrait), (max-width: 640px) {
+  body.st-playing #ptBoard .spot-view { width: min(96vw, calc((100 * var(--vh) - 180px) / 2 * 1.339)); }
+}
+body.st-playing #spotArea .game-top { flex-wrap: nowrap; }
+#spotPractice .practice-card { align-items: center; }

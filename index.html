@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v3.0">
+<link rel="stylesheet" href="style.css?v=v3.1">
 </head>
 <body>
 
@@ -156,6 +156,7 @@
         <button class="btn sun big-ish" id="wgPracBtn">🧱 벽바둑 AI와 연습</button>
         <button class="btn sun big-ish" id="cubePracBtn">🧊 큐브 세기 연습</button>
         <button class="btn sun big-ish" id="symPracBtn">🦋 대칭 퍼즐 연습</button>
+        <button class="btn sun big-ish" id="spotPracBtn">🔍 달라진 그림 찾기 연습</button>
       </div>
     </div>
     <div class="lobby-grid">
@@ -176,6 +177,7 @@
         <svg id="stAnswerBoard" class="board small"></svg>
         <div id="stCubeAns"></div>
         <svg id="stSymAns" class="sym-board small" style="display:none"></svg>
+        <div id="stSpotAns" class="spot-small hidden"></div>
       </div>
       <div class="card">
         <h3>🏆 우리 반 순위</h3>
@@ -194,6 +196,7 @@
           <button class="btn ghost how-btn" data-how="wallgo2">🔷 벽바둑 2 방법</button>
           <button class="btn ghost how-btn" data-how="cube">🧊 큐브 세기 방법</button>
           <button class="btn ghost how-btn" data-how="sym">🦋 대칭 퍼즐 방법</button>
+          <button class="btn ghost how-btn" data-how="spot">🔍 달라진 그림 찾기 방법</button>
         </div>
       </div>
     </div>
@@ -223,6 +226,16 @@
     <div class="sym-wrap"><svg id="syBoard" class="sym-board"></svg></div>
     <div class="tools"><button class="btn ghost" id="syReset">↩ 처음 자리로</button></div>
     <p id="syMsg" class="game-msg"></p>
+   </div>
+   <div id="spotArea" class="game-area hidden">
+    <div class="game-top">
+      <span class="chip level" id="ptLevel"></span>
+      <span class="chip prog" id="ptProg"></span>
+      <button class="btn ghost small spot-zoom" id="ptZoom">🔍 크게</button>
+      <span class="timer" id="ptTimer">0:00</span>
+    </div>
+    <div id="ptBoard"></div>
+    <p id="ptMsg" class="game-msg"></p>
    </div>
    <div id="cubeArea" class="game-area hidden">
     <div class="game-top">
@@ -265,6 +278,24 @@
       <button class="btn ghost" id="spReset">↩ 처음 자리로</button>
       <button class="btn ghost" id="spAnswer">💡 정답 보기</button>
       <button class="btn sun" id="spNext">🔄 다른 문제</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 달라진 그림 찾기 연습 ===== -->
+<div id="spotPractice" class="overlay hidden">
+  <div class="practice-card spot-prac">
+    <div class="pr-head">
+      <h2>🔍 달라진 그림 찾기 연습</h2>
+      <button class="btn ghost small" id="ppClose">닫기 ✕</button>
+    </div>
+    <div class="pr-levels" id="ppLevels"></div>
+    <div class="pr-coach"><img class="porong mini" src="img/porong-oh.jpg" alt="포롱이"><div class="bubble" id="ppMsg"></div></div>
+    <div id="ppBoard"></div>
+    <div class="tools">
+      <button class="btn ghost" id="ppZoom">🔍 크게</button>
+      <button class="btn ghost" id="ppAnswer">💡 정답 보기</button>
+      <button class="btn sun" id="ppNext">🔄 다른 그림</button>
     </div>
   </div>
 </div>
@@ -382,6 +413,18 @@
           <p class="hint free-note hidden" id="stimeNote">♾️ 시간 제한이 없어요. 모두 완성하면 자동으로 끝나요. 오래 걸리면 [라운드 끝내기]를 누르세요. 완성한 학생만 점수를 받아요(먼저 완성한 순서대로 등수).</p>
           <p class="hint">스타트를 누르면 고른 단계에서 아직 안 나온 문제 하나가 모두에게 똑같이 나가요. 선대칭이 되는 순간 저절로 제출되고, 먼저 완성한 순서대로 등수가 정해져요. 대칭축 방향이나 모양이 정답 예시와 달라도 선대칭이면 정답이에요.</p>
         </div>
+        <div id="spotPanel" class="hidden">
+          <div id="spotLevelBtns" class="level-btns"></div>
+          <div class="time-row">
+            <span>⏱ 제한 시간</span>
+            <button class="btn round" id="ptimeMinus">−</button>
+            <b id="ptimeLabel">2:00</b>
+            <button class="btn round" id="ptimePlus">＋</button>
+            <button class="btn ghost small free-btn" id="ptimeFree">♾️ 제한 없음</button>
+          </div>
+          <p class="hint free-note hidden" id="ptimeNote">♾️ 시간 제한이 없어요. 모든 학생이 다 찾으면 자동으로 끝나요. 오래 걸리면 [라운드 끝내기]를 누르세요. 그때까지 찾은 곳만큼 점수를 받아요.</p>
+          <p class="hint">⭐ 개수는 그림 속 장면의 크기예요(⭐ 가까이서 본 작은 장면 → ⭐⭐⭐ 멀리서 본 넓은 장면). 스타트를 누르면 고른 단계에서 아직 안 나온 그림 하나가 모두에게 똑같이 나가요. 다 찾으면 저절로 제출되고 먼저 찾은 순서대로 보너스, 일부만 찾으면 찾은 만큼 점수를 받아요. 틀린 곳을 누르면 1.5초 동안 누를 수 없어요.</p>
+        </div>
         <div id="cubePanel" class="hidden">
           <div id="cubeLevelBtns" class="level-btns"></div>
           <div class="time-row">
@@ -424,6 +467,7 @@
         <div class="board-wrap"><svg id="tBoard" class="board"></svg></div>
         <div id="tCubes" class="t-cubes hidden"></div>
         <svg id="tSym" class="sym-board small" style="display:none"></svg>
+        <div id="tSpot" class="spot-small hidden"></div>
         <button class="btn ghost hidden" id="answerBtn">✅ 정답 보기</button>
       </div>
     </div>
@@ -466,6 +510,7 @@
           <svg id="exWall" class="board ex-board wg"></svg>
           <div id="exCube" class="ex-cube" style="display:none"></div>
           <svg id="exSym" class="sym-board ex" style="display:none"></svg>
+          <div id="exSpot" class="spot-small" style="display:none"></div>
           <div id="exExtra" class="ex-extra"></div>
         </div>
       </div>
@@ -595,6 +640,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v3.0"></script>
+<script type="module" src="app.js?v=v3.1"></script>
 </body>
 </html>

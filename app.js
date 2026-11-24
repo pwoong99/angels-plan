@@ -6,14 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v3.0";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v3.0";
-import * as WG from "./wallgo.js?v=v3.0";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v3.0";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v3.0";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v3.0";
+import { PUZZLES } from "./puzzles.js?v=v3.1";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v3.1";
+import * as WG from "./wallgo.js?v=v3.1";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v3.1";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v3.1";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v3.1";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v3.1";
 
-const VERSION = "v3.0";
+const VERSION = "v3.1";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -33,8 +34,20 @@ const GAMES = {
   wallgo: { name: "벽바둑 1", icon: "🧱", desc: "2~4명이 한 조로 대결 · 벽을 세워 내 땅 넓히기", team: false },
   wallgo2: { name: "벽바둑 2", icon: "🔷", desc: "벽바둑에 네모 말(곧게만 2칸)·동그라미 말(꺾어서 2칸)이 생겼어요 · 2~4명", team: false },
   sym: { name: "대칭 퍼즐", icon: "🦋", desc: "조각을 옮기고 돌려서 선대칭 모양 만들기 · 개인전 · 먼저 완성할수록 높은 등수", team: false },
-  cube: { name: "큐브 세기", icon: "🧊", desc: "쌓인 큐브가 모두 몇 개인지 빨리 세기 · 개인전 · 한 판 5문제", team: false }
+  cube: { name: "큐브 세기", icon: "🧊", desc: "쌓인 큐브가 모두 몇 개인지 빨리 세기 · 개인전 · 한 판 5문제", team: false },
+  spot: { name: "달라진 그림 찾기", icon: "🔍", desc: "두 그림에서 다른 곳을 모두 찾기 · 개인전 · 다 찾으면 빨리 찾은 순서로 등수", team: false }
 };
+// 달라진 그림 찾기: 9단계(⭐ 세트 난이도 × 쉬움·보통·어려움), 단계별 기본 시간과 배율
+const DEFAULT_PTIMES = [90, 120, 180, 90, 150, 180, 120, 180, 240];
+const SPOT_MULT = [0.6, 0.7, 0.8, 0.8, 0.9, 1, 1.1, 1.3, 1.5];
+const spotKey = (r) => (r && r.spot && spotBoxes(r.spot.k).length ? r.spot.k : null);
+// 진행 중 찾은 곳: edges 칸에 "라운드:번호,번호,…", 다 찾으면 sub로 제출
+function spotFound(p, round) {
+  let t = null;
+  if (p && p.sub && p.sub.round === round && typeof p.sub.edges === "string") t = p.sub.edges;
+  else if (p && typeof p.edges === "string" && p.edges.startsWith(round + ":")) t = p.edges.slice(String(round).length + 1);
+  return t ? [...new Set(t.split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 0))] : [];
+}
 const isWG = (g) => g === "wallgo" || g === "wallgo2";
 // 대칭 퍼즐: 단계별 기본 제한 시간(0 = 제한 없음)
 const DEFAULT_STIMES = [60, 60, 90, 120, 150, 180, 240, 300];
@@ -59,7 +72,7 @@ const LEVEL_MULT = [0.6, 0.6, 0.8, 0.8, 1, 1, 1.2, 1.2, 1.5, 1.5];
 const PTS_V = 2;   // 점수 기준 판. 예전 판으로 저장된 방 설정은 무시하고 새 기본값을 씀
 // 대칭 퍼즐은 8단계라 배율표가 따로 있음
 const SYM_MULT = [0.6, 0.6, 0.8, 1, 1, 1.2, 1.2, 1.5];
-const multOf = (game, level) => (game === "sym" ? SYM_MULT : LEVEL_MULT)[level - 1] || 1;
+const multOf = (game, level) => (game === "sym" ? SYM_MULT : game === "spot" ? SPOT_MULT : LEVEL_MULT)[level - 1] || 1;
 function calcPoints(P, rank, level, game = "fence") {
   const bonus = Math.max(0, P.top - (rank - 1));
   const m = P.mult ? multOf(game, level) : 1;
@@ -209,6 +222,11 @@ function resultText(res) {
     if (res.outcome === "draw") return { ok: true, big: `🤝 무승부${sc}`, sm: `${esc(res.vs || "")}와 비겼어요 · +${res.points}점` };
     return { ok: false, big: `😢 아쉽게 졌어요${sc}`, sm: `${esc(res.vs || "")}에게 졌지만 참여 점수 +${res.points}점` };
   }
+  if (res.game === "spot") {
+    if (res.correct) return { ok: true, big: `🎉 ${res.total}곳 모두 찾았어요! ${res.rank}등`, sm: `+${res.points}점을 얻었어요` };
+    if (res.n > 0) return { ok: true, big: `👍 ${res.total}곳 중 ${res.n}곳 찾았어요`, sm: `+${res.points}점 · 다 찾으면 빠른 순서 보너스도 받아요` };
+    return { ok: false, big: "⏰ 시간 종료", sm: `다른 곳을 찾지 못했어요 · 참여 점수 +${res.points || 0}점` };
+  }
   if (res.game === "cube") {
     if (res.correct) return { ok: true, big: `🎉 ${res.total}문제 모두 정답! ${res.rank}등`, sm: `+${res.points}점을 얻었어요` };
     if (res.reason === "timeout") return { ok: false, big: "⏰ 시간 초과", sm: `시간 안에 답을 하나도 내지 못했어요 · 참여 점수 +${res.points || 0}점` };
@@ -263,7 +281,8 @@ const GUIDE_IMG = {
   wallgo: ["guide-main", "guide-point", "guide-three", "guide-book", "guide-think", "guide-bow"],
   wallgo2: ["guide-main", "guide-point", "guide-three", "guide-think", "guide-book", "guide-bow"],
   cube: ["guide-main", "guide-think", "guide-point", "guide-thumb"],
-  sym: ["guide-main", "guide-point", "guide-think", "guide-thumb"]
+  sym: ["guide-main", "guide-point", "guide-think", "guide-thumb"],
+  spot: ["guide-main", "guide-point", "guide-think", "guide-thumb"]
 };
 const FENCE_DEMO = (() => { const L = PUZZLES[0], P = L.puzzles[0]; return { w: L.w, h: L.h, c: P.c, ans: decodeAnswer(P.a) }; })();
 const WG_DEMO = (() => {
@@ -304,7 +323,7 @@ function wallShow(m, opt = {}) {
   exWall.render(m, opt.me || null, { active: !!opt.active, showRegions: !!opt.regions });
   if (opt.sel !== undefined) { exWall.me = m.turn; exWall.sel = opt.sel; exWall.dest = opt.dest !== undefined ? opt.dest : null; exWall.draw(); }
 }
-function noBoard() { $("exSym").style.display = "none"; $("exFence").style.display = "none"; $("exWall").style.display = "none"; $("exCube").innerHTML = ""; $("exCube").style.display = "none"; }
+function noBoard() { $("exSpot").style.display = "none"; $("exSym").style.display = "none"; $("exFence").style.display = "none"; $("exWall").style.display = "none"; $("exCube").innerHTML = ""; $("exCube").style.display = "none"; }
 const SYM_DEMO = SYM.levels[2].puzzles[0];
 let exSymBoard = null;
 function symShow(answer) {
@@ -312,6 +331,14 @@ function symShow(answer) {
   $("exSym").style.display = "";
   if (!exSymBoard) exSymBoard = new SymBoard($("exSym"));
   exSymBoard.load(SYM_DEMO, answer ? answerState(SYM_DEMO) : initialState(SYM_DEMO), { locked: true });
+}
+const SPOT_DEMO = "1_easy";
+let exSpot = null;
+function spotShow(found) {
+  noBoard();
+  $("exSpot").style.display = "";
+  if (!exSpot) exSpot = new SpotGame($("exSpot"));
+  exSpot.load(SPOT_DEMO, found, { locked: true });
 }
 const CUBE_DEMO = { L: CUBES[1], key: CUBES[1].puzzles[0] };
 function cubeShow(top) {
@@ -366,6 +393,14 @@ const EXPLAIN = {
     { title: "완성하면 저절로 제출!", text: "조각을 모두 겹치지 않게 붙여서 선대칭 모양을 만들면 바로 제출돼요.\n대칭축은 세로·가로·대각선 어느 쪽이든 괜찮아요. 정답 모양이 여러 개일 수도 있어요!", show: () => { symShow(true); return pill("점선 = 대칭축", "p"); } },
     { title: "점수", text: "먼저 완성할수록 높은 등수!\n어려운 단계일수록 점수가 커져요.",
       show: (r) => { noBoard(); const P = roomPts(r); return pill(`완성 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill(P.mult ? "어려운 단계 ×1.5까지" : "배율 없음") + pill(`틀려도 참여 ${P.part}점`); } }
+  ],
+  spot: [
+    { title: "🔍 달라진 그림 찾기란?", text: "똑같아 보이는 두 그림에서 다른 곳을 모두 찾는 게임이에요.\n왼쪽(위)은 원래 그림, 오른쪽(아래)은 몇 곳이 바뀐 그림이에요.", show: () => spotShow([]) },
+    { title: "찾으면 톡!", text: "다른 곳을 찾으면 두 그림 중 아무 쪽이나 그 자리를 톡 눌러요.\n맞으면 동그라미가 생겨요. 틀린 곳을 누르면 ✕가 나오고 잠깐 누를 수 없어요!",
+      show: () => { spotShow([0, 1]); return pill("맞으면 ⭕", "g") + pill("틀리면 ✕ · 잠깐 쉬기", "p"); } },
+    { title: "🔍 크게 보기", text: "작은 곳이 잘 안 보이면 [🔍 크게]를 눌러요.\n크게 본 채로 그림을 끌면 두 그림이 함께 움직여요.", show: () => { spotShow([]); return pill("🔍 크게 / 작게", "y") + pill("끌기 = 둘러보기"); } },
+    { title: "점수", text: "다른 곳을 모두 찾으면 저절로 제출! 먼저 찾을수록 높은 등수예요.\n일부만 찾아도 찾은 만큼 점수를 받아요. ⭐가 많고 어려운 단계일수록 점수가 커져요.",
+      show: (r) => { spotShow([0, 1, 2, 3, 4]); const P = roomPts(r); return pill(`모두 찾으면 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill("일부만 찾으면 찾은 만큼", "p") + pill(P.mult ? "어려운 단계 ×1.5까지" : "배율 없음"); } }
   ],
   cube: [
     { title: "🧊 큐브 세기란?", text: "쌓여 있는 큐브가 모두 몇 개인지 세는 게임이에요.\n한 판에 5문제! 정확하게, 그리고 빠르게 세어 봐요.", show: () => cubeShow(false) },
@@ -729,8 +764,10 @@ function renderStudent() {
     $("wgArea").classList.toggle("hidden", !isWG(r.game));
     $("cubeArea").classList.toggle("hidden", r.game !== "cube");
     $("symArea").classList.toggle("hidden", r.game !== "sym");
+    $("spotArea").classList.toggle("hidden", r.game !== "spot");
     if (isWG(r.game)) renderStudentWallgo(r, me, res);
     else if (r.game === "cube") renderStudentCube(r, me, res);
+    else if (r.game === "spot") renderStudentSpot(r, me, res);
     else if (r.game === "sym") renderStudentSym(r, me, res);
     else renderStudentFence(r, me, res);
   } else {
@@ -749,11 +786,14 @@ function renderStudent() {
     const symEnd = r.status === "ended" && r.round > 0 && r.game === "sym" && symPz(r);
     $("stSymAns").style.display = symEnd ? "" : "none";
     if (symEnd && stSymAnsKey !== r.round) { stSymAnsKey = r.round; stSymAns.load(symPz(r), answerState(symPz(r)), { locked: true }); }
+    const spotEnd = r.status === "ended" && r.round > 0 && r.game === "spot" && spotKey(r);
+    $("stSpotAns").classList.toggle("hidden", !spotEnd);
+    if (spotEnd && stSpotAnsKey !== r.round) { stSpotAnsKey = r.round; stSpotAns.load(spotKey(r), spotFound(me, r.round), { locked: true, showAll: true }); }
     const ans = r.status === "ended" && r.round > 0 && r.game === "fence" ? answerOf(r) : null;
-    $("stAnswerCard").hidden = !ans && !cubeEnd && !symEnd;
+    $("stAnswerCard").hidden = !ans && !cubeEnd && !symEnd && !spotEnd;
     $("stAnswerBoard").style.display = ans ? "" : "none";
     $("stCubeAns").innerHTML = cubeEnd ? cubeReviewHTML(r, cubeMyAnswers(me, r.round)) : "";
-    $("stAnswerTitle").textContent = cubeEnd ? "✅ 이번 판 정답" : symEnd ? "✅ 정답 예시 (다른 모양도 대칭이면 정답!)" : "✅ 이번 문제 정답";
+    $("stAnswerTitle").textContent = cubeEnd ? "✅ 이번 판 정답" : symEnd ? "✅ 정답 예시 (다른 모양도 대칭이면 정답!)" : spotEnd ? "✅ 다른 곳 (초록 = 내가 찾은 곳, 주황 = 못 찾은 곳)" : "✅ 이번 문제 정답";
     if (ans && stAnswerKey !== r.round) {
       stAnswerKey = r.round;
       stAnswerBoard.load(r.puzzle.w, r.puzzle.h, r.puzzle.c);
@@ -900,6 +940,64 @@ $("syReset").addEventListener("click", () => {
   syBoard.load(pz, initialState(pz));
   symChange(syBoard.state(), checkSym(pz, syBoard.state()));
 });
+
+// ----- 달라진 그림 찾기 (학생) -----
+// 찾을 때마다 edges 칸에 "라운드:번호,…" 저장(새로고침해도 이어짐), 모두 찾으면 바로 제출
+const PT = { round: null, sent: null, saveT: null, msgT: null };
+const zoomLabel = (z) => (z >= 3 ? "↩ 원래 크기" : z >= 2 ? "🔍 더 크게" : "🔍 크게");
+const ptGame = new SpotGame($("ptBoard"), {
+  onFind: (i, found) => spotFindSave(found),
+  onWrong: (wait) => spotMsg($("ptMsg"), "✕ 거기는 똑같아요! 잠깐 쉬었다가 다시 찾아요", "bad", wait),
+  onZoom: (z) => ($("ptZoom").textContent = zoomLabel(z))
+});
+const stSpotAns = new SpotGame($("stSpotAns"));
+let stSpotAnsKey = null;
+function spotMsg(el, text, cls, wait) {
+  clearTimeout(PT.msgT);
+  el.className = "game-msg" + (cls ? " " + cls : ""); el.textContent = text;
+  if (wait) PT.msgT = setTimeout(() => { if (el.textContent === text) { el.textContent = ""; el.className = "game-msg"; } }, wait);
+}
+function spotProg() { $("ptProg").textContent = `찾은 곳 ${ptGame.found.length} / ${ptGame.total}`; }
+function renderStudentSpot(r, me, res) {
+  const key = spotKey(r);
+  if (!key) return;
+  const submitted = !!(me.sub && me.sub.round === r.round);
+  const end = endAtOf(r), timeUp = end !== null && now() > end;
+  const lock = submitted || timeUp || !!res || PT.sent === r.round;
+  if (PT.round !== r.round) {
+    PT.round = r.round; PT.sent = null;
+    ptGame.load(key, spotFound(me, r.round), { locked: lock });
+    $("ptLevel").textContent = `🔍 ${spotTitle(key)}`;
+  } else if (ptGame.locked !== lock) ptGame.setLocked(lock);
+  $("ptZoom").disabled = false;
+  spotProg();
+  const msg = $("ptMsg");
+  if (res) {
+    const t = resultText(res);
+    spotMsg(msg, `${t.big} ${res.points ? `+${res.points}점` : "0점"}`, t.ok ? "ok" : "bad");
+    celebrate(res);
+  } else if (submitted || PT.sent === r.round) spotMsg(msg, "🔍 모두 찾았어요! 채점 중이에요…", "ok");
+  else if (timeUp) spotMsg(msg, "⏰ 시간 종료!", "bad");
+}
+function spotFindSave(found) {
+  const r = ST.room, me = ST.me;
+  spotProg();
+  if (!r || r.game !== "spot" || r.status !== "playing" || !ST.pRef) return;
+  if (me && me.sub && me.sub.round === r.round) return;
+  const txt = found.join(","), round = r.round;
+  clearTimeout(PT.saveT);
+  if (found.length >= ptGame.total) {
+    PT.sent = round;
+    ptGame.setLocked(true);
+    renderStudent();
+    updateDoc(ST.pRef, { sub: { round, edges: txt, at: serverTimestamp() }, edges: `${round}:${txt}` })
+      .catch((e) => { console.error(e); PT.sent = null; toast("제출하지 못했어요. 시간이 끝났을 수 있어요."); renderStudent(); });
+    return;
+  }
+  spotMsg($("ptMsg"), `⭕ 찾았어요! 남은 곳 ${ptGame.total - found.length}곳`, "ok", 1500);
+  PT.saveT = setTimeout(() => updateDoc(ST.pRef, { edges: `${round}:${txt}` }).catch(console.warn), 300);
+}
+$("ptZoom").addEventListener("click", () => ptGame.setZoom(ptGame.zoom >= 3 ? 1 : ptGame.zoom + 1));
 
 // ----- 큐브 세기 (학생) -----
 // 진행 중 답은 edges 칸에 "라운드:답,답,…"로 저장(새로고침해도 이어짐), 다 풀면 sub로 제출
@@ -1081,11 +1179,11 @@ function studentTick() {
   }
   const end = endAtOf(r);
   if (end === null) {   // 제한 시간 없음: 지난 시간만 보여 줌
-    for (const el of [$("stTimer"), $("cbTimer"), $("syTimer")]) { el.textContent = "⏱ " + fmtTime(elapsedOf(r)); el.classList.remove("warn"); el.classList.add("free"); }
+    for (const el of [$("stTimer"), $("cbTimer"), $("syTimer"), $("ptTimer")]) { el.textContent = "⏱ " + fmtTime(elapsedOf(r)); el.classList.remove("warn"); el.classList.add("free"); }
     return;
   }
   const left = (end - now()) / 1000;
-  for (const el of [$("stTimer"), $("cbTimer"), $("syTimer")]) {
+  for (const el of [$("stTimer"), $("cbTimer"), $("syTimer"), $("ptTimer")]) {
     el.classList.remove("free");
     el.textContent = fmtTime(left);
     el.classList.toggle("warn", left <= 10 && left > 0);
@@ -1174,7 +1272,7 @@ function prLoad(lv) {
   }).join("");
 }
 function openPractice() { $("practice").classList.remove("hidden"); prLoad(PR.lv); }
-function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); const cp = document.getElementById("cubePractice"); if (cp) cp.classList.add("hidden"); const sp = document.getElementById("symPractice"); if (sp) sp.classList.add("hidden"); }
+function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); const cp = document.getElementById("cubePractice"); if (cp) cp.classList.add("hidden"); const sp = document.getElementById("symPractice"); if (sp) sp.classList.add("hidden"); $("spotPractice").classList.add("hidden"); }
 $("practiceBtn").addEventListener("click", openPractice);
 $("prClose").addEventListener("click", closePractice);
 $("prLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-prlv]"); if (b) prLoad(Number(b.dataset.prlv)); });
@@ -1288,6 +1386,37 @@ $("spAnswer").addEventListener("click", () => { spBoard.load(SP.pz, answerState(
 $("spLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-splv]"); if (b) spLoad(Number(b.dataset.splv)); });
 
 // =====================================================================
+// 달라진 그림 찾기 혼자 연습하기 (점수 없음)
+// =====================================================================
+const PP = { lv: 0, key: null };
+const ppGame = new SpotGame($("ppBoard"), {
+  onFind: (i, found) => {
+    if (found.length >= ppGame.total) { ppSay(`${ppGame.total}곳 모두 찾았어! 🎉 다른 그림도 해 볼까?`, "ok"); ppGame.setLocked(true); confetti(); }
+    else ppSay(`찾았다! 남은 곳은 ${ppGame.total - found.length}곳이야.`, "ok");
+  },
+  onWrong: () => ppSay("거기는 똑같아! 잠깐 쉬었다가 다시 찾아 봐.", "bad"),
+  onZoom: (z) => ($("ppZoom").textContent = zoomLabel(z))
+});
+function ppSay(t, cls = "") { $("ppMsg").textContent = t; $("ppMsg").className = "bubble" + (cls ? " " + cls : ""); }
+function ppLoad(lv, next = true) {
+  PP.lv = lv;
+  const L = SPOT_LEVELS[lv];
+  if (next || !PP.key || !L.keys.includes(PP.key)) {
+    const c = L.keys.filter((k) => k !== PP.key);
+    PP.key = (c.length ? c : L.keys)[Math.floor(Math.random() * (c.length || L.keys.length))];
+  }
+  ppGame.load(PP.key, []);
+  $("ppLevels").innerHTML = SPOT_LEVELS.map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-pplv="${i}">${x.name}</button>`).join("");
+  ppSay(`두 그림에서 다른 곳 ${ppGame.total}곳을 찾아서 톡 눌러 봐!`);
+}
+$("spotPracBtn").addEventListener("click", () => { $("spotPractice").classList.remove("hidden"); ppLoad(PP.lv, !PP.key); });
+$("ppClose").addEventListener("click", () => $("spotPractice").classList.add("hidden"));
+$("ppNext").addEventListener("click", () => ppLoad(PP.lv));
+$("ppAnswer").addEventListener("click", () => { ppGame.setShowAll(true); ppGame.setLocked(true); ppSay("주황 동그라미가 못 찾은 곳이야. [🔄 다른 그림]으로 또 해 보자!"); });
+$("ppZoom").addEventListener("click", () => ppGame.setZoom(ppGame.zoom >= 3 ? 1 : ppGame.zoom + 1));
+$("ppLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-pplv]"); if (b) ppLoad(Number(b.dataset.pplv)); });
+
+// =====================================================================
 // 큐브 세기 혼자 연습하기 (점수 없음, 바로 정답 확인)
 // =====================================================================
 const CP = { lv: 0, key: null, input: "", done: false, streak: 0 };
@@ -1353,7 +1482,7 @@ $("prCheck").addEventListener("click", () => {
 // =====================================================================
 // 교사
 // =====================================================================
-const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, ssel: null, game: null, boardKey: null, answer: false, tick: null, autoTry: new Map() };
+const T = { unsubs: [], room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, ssel: null, psel: null, game: null, boardKey: null, answer: false, tick: null, autoTry: new Map() };
 const tBoard = new Board($("tBoard"));
 
 // 관리자: 이름 없이 관리자 비밀번호 / 선생님: 등록한 이름 + 비밀번호 (관리자 승인 필요)
@@ -1422,7 +1551,7 @@ async function startTeacher(code) {
   $("tWho").textContent = T.role === "admin" ? "👑 관리자" : `🧑‍🏫 ${T.tname} 선생님`;
   $("tAdminBtn").classList.toggle("hidden", T.role !== "admin");
   const roomRef = doc(db, "rooms", code);
-  Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, ssel: null, game: null, boardKey: null, answer: false, autoTry: new Map() });
+  Object.assign(T, { code, roomRef, room: null, players: [], matches: [], graded: new Map(), queue: Promise.resolve(), ending: false, sel: null, csel: null, ssel: null, psel: null, game: null, boardKey: null, answer: false, autoTry: new Map() });
   $("tCode").textContent = code;
   hideExplain();
   showScreen("teacher");
@@ -1436,6 +1565,7 @@ async function startTeacher(code) {
     if (T.game === null) T.game = GAMES[T.room.game] ? T.room.game : "fence";
     if (T.ssel === null || T.ssel > SYM.levels.length) T.ssel = Math.min((T.room.game === "sym" && T.room.level) || 1, SYM.levels.length);
     if (T.csel === null || T.csel > CUBES.length) T.csel = Math.min((T.room.cube && T.room.cube.lv) || 1, CUBES.length);
+    if (T.psel === null || T.psel > SPOT_LEVELS.length) T.psel = Math.min((T.room.spot && T.room.spot.lv) || 1, SPOT_LEVELS.length);
     renderTeacher(); gradePending(); gradeMatches();
   }));
   T.unsubs.push(onSnapshot(collection(db, "rooms", code, "players"), (qs) => {
@@ -1462,6 +1592,7 @@ const mRefOf = (id) => doc(db, "rooms", T.code, "matches", id);
 const times = () => { const t = T.room && T.room.times; return Array.isArray(t) && t.length === PUZZLES.length ? t : DEFAULT_TIMES; };
 const stimes = () => { const t = T.room && T.room.stimes; return Array.isArray(t) && t.length === SYM.levels.length ? t : DEFAULT_STIMES; };   // 0 = 제한 시간 없음
 const ctimes = () => { const t = T.room && T.room.ctimes; return Array.isArray(t) && t.length === CUBES.length ? t : DEFAULT_CTIMES; };   // 0 = 제한 시간 없음
+const ptimes = () => { const t = T.room && T.room.ptimes; return Array.isArray(t) && t.length === SPOT_LEVELS.length ? t : DEFAULT_PTIMES; };   // 0 = 제한 시간 없음
 const roomPts = (r) => {
   const p = (r && r.ptsV === PTS_V && r.pts) || {};
   const n = (v, d) => (Number.isFinite(v) ? v : d);
@@ -1488,7 +1619,7 @@ function playerState(p, r) {
     if (m && m.phase === "done") return { cls: "wait", txt: "점수 계산 중…" };
     return { cls: "", txt: `⚔️ 대결 중`, solving: true };
   }
-  if (res && res !== "pending" && r.game !== "cube") {
+  if (res && res !== "pending" && r.game !== "cube" && r.game !== "spot") {
     if (res.correct) return { cls: "ok", txt: `✅ ${res.rank}등 · +${res.points}점`, done: true, ok: true };
     if (res.reason === "wrong") return { cls: "bad", txt: "❌ 오답", done: true, bad: true };
     return { cls: "bad", txt: "⏰ 시간 초과", done: true, late: true };
@@ -1498,7 +1629,12 @@ function playerState(p, r) {
     if (res.reason === "timeout") return { cls: "bad", txt: "⏰ 시간 초과", done: true, late: true };
     return { cls: res.n ? "ok" : "bad", txt: `🟡 ${res.n}/${res.total} 정답 · +${res.points}점`, done: true, bad: !res.n };
   }
+  if (r.game === "spot" && res && res !== "pending") {
+    if (res.correct) return { cls: "ok", txt: `✅ ${res.total}/${res.total} · ${res.rank}등 · +${res.points}점`, done: true, ok: true };
+    return { cls: res.n ? "ok" : "bad", txt: `🟡 ${res.n}/${res.total}곳 · +${res.points}점`, done: true, bad: !res.n };
+  }
   if (p.sub && p.sub.round === r.round) return { cls: "wait", txt: "📮 채점 중…" };
+  if (r.status === "playing" && r.game === "spot") return { cls: "", txt: `🔍 찾는 중 ${spotFound(p, r.round).length}/${spotBoxes(spotKey(r)).length}`, solving: true };
   if (r.status === "playing" && r.game === "cube") return { cls: "", txt: `✏️ 푸는 중 ${cubeMyAnswers(p, r.round).length}/${(r.cube && r.cube.qs.length) || CUBE_Q}`, solving: true };
   if (r.status === "playing") return { cls: "", txt: "✏️ 푸는 중", solving: true };
   return { cls: "", txt: "대기 중" };
@@ -1519,6 +1655,20 @@ function renderTeacher() {
   $("wgPanel").classList.toggle("hidden", !isWG(game));
   $("cubePanel").classList.toggle("hidden", game !== "cube");
   $("symPanel").classList.toggle("hidden", game !== "sym");
+  $("spotPanel").classList.toggle("hidden", game !== "spot");
+  $("spotLevelBtns").innerHTML = SPOT_LEVELS.map((L, i) => {
+    const lv = i + 1, t = ptimes()[i];
+    return `<button class="level-btn ${lv === T.psel ? "active" : ""}" data-plv="${lv}" ${playing ? "disabled" : ""}>
+      <b>${L.name}</b>다른 곳 ${L.count} · 그림 ${L.keys.length}개<br><small>${t > 0 ? fmtTime(t) : "시간 제한 없음"}${pts().mult ? ` · ×${SPOT_MULT[i]}` : ""}</small></button>`;
+  }).join("");
+  const ptt = ptimes()[T.psel - 1];
+  $("ptimeLabel").textContent = ptt > 0 ? fmtTime(ptt) : "제한 없음";
+  $("ptimeLabel").classList.toggle("free", !(ptt > 0));
+  $("ptimeFree").textContent = ptt > 0 ? "♾️ 제한 없음" : "⏱ 시간 정하기";
+  $("ptimeFree").classList.toggle("on", !(ptt > 0));
+  $("ptimeNote").classList.toggle("hidden", ptt > 0);
+  ["ptimePlus", "ptimeFree"].forEach((id) => ($(id).disabled = playing));
+  $("ptimeMinus").disabled = playing || !(ptt > 0);
   $("symLevelBtns").innerHTML = SYM.levels.map((L, i) => {
     const lv = i + 1, t = stimes()[i];
     return `<button class="level-btn ${L.tut ? "tut" : ""} ${lv === T.ssel ? "active" : ""}" data-slv="${lv}" ${playing ? "disabled" : ""}>
@@ -1580,7 +1730,16 @@ function renderTeacher() {
   const showPuzzle = r.round > 0 && r.game === "fence" && r.puzzle;
   const showCube = r.round > 0 && r.game === "cube" && r.cube;
   const showSym = r.round > 0 && r.game === "sym" && symPz(r);
-  $("tPuzzleCard").classList.toggle("hidden", !showPuzzle && !showCube && !showSym);
+  const showSpot = r.round > 0 && r.game === "spot" && spotKey(r);
+  $("tPuzzleCard").classList.toggle("hidden", !showPuzzle && !showCube && !showSym && !showSpot);
+  $("tSpot").classList.toggle("hidden", !showSpot);
+  if (showSpot) {
+    $("tRoundInfo").textContent = `${r.round}라운드 · 달라진 그림 찾기 · ${spotTitle(spotKey(r))} · ${spotBoxes(spotKey(r)).length}곳${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
+    const k = r.round + ":" + T.answer;
+    if (T.spotKey !== k) { T.spotKey = k; tSpotGame.load(spotKey(r), [], { locked: true, showAll: T.answer }); }
+    $("answerBtn").classList.toggle("hidden", r.status !== "ended");
+    $("answerBtn").textContent = T.answer ? "🙈 다른 곳 숨기기" : "✅ 다른 곳 보기";
+  }
   $("tSym").style.display = showSym ? "" : "none";
   if (showSym) {
     $("tRoundInfo").textContent = `${r.round}라운드 · 대칭 퍼즐 · ${symLabel(r.level)}${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
@@ -1732,7 +1891,7 @@ function teacherTick() {
 // ----- 울타리치기 채점 -----
 function gradePending() {
   const r = T.room;
-  if (!r || r.status !== "playing" || !["fence", "cube", "sym"].includes(r.game)) return;
+  if (!r || r.status !== "playing" || !["fence", "cube", "sym", "spot"].includes(r.game)) return;
   const round = r.round;
   const pend = T.players
     .filter((p) => p.sub && p.sub.round === round && ms(p.sub.at) && !(p.result && p.result.round === round) && !T.graded.has(round + "|" + p.id))
@@ -1758,9 +1917,27 @@ function cubeResult(r, answers, round, late) {
   else points = Math.max(P.part, Math.round(P.base * (n / qs.length) * (P.mult ? (LEVEL_MULT[r.level - 1] || 1) : 1)));
   return { round, game: "cube", correct: perfect, n, total: qs.length, rank, points, reason: perfect ? "ok" : answers.length ? "partial" : "timeout" };
 }
+// 달라진 그림 찾기 채점: 모두 찾으면 찾은 순서로 등수·보너스, 일부만 찾으면 찾은 비율만큼
+function spotResult(r, found, round, late) {
+  const total = spotBoxes(spotKey(r)).length, P = pts();
+  const n = found.filter((i) => i < total).length;
+  const perfect = !late && total > 0 && n >= total;
+  let rank = 0, points;
+  if (perfect) { rank = correctCount(round) + 1; points = calcPoints(P, rank, r.level, "spot"); }
+  else points = Math.max(P.part, Math.round(P.base * (n / (total || 1)) * (P.mult ? multOf("spot", r.level) : 1)));
+  return { round, game: "spot", correct: perfect, n, total, rank, points, reason: perfect ? "ok" : n ? "partial" : "timeout" };
+}
 async function gradeOne(p, round) {
   const r = T.room;
   if (!r || r.round !== round) return;
+  if (r.game === "spot") {
+    const end = endAtOf(r);
+    const late = end !== null && ms(p.sub.at) > end + GRACE_MS;
+    const result = spotResult(r, spotFound(p, round), round, late);
+    T.graded.set(round + "|" + p.id, result);
+    await updateDoc(pRefOf(p.id), { result, score: increment(result.points), total: increment(result.points) });
+    return;
+  }
   if (r.game === "cube") {
     const end = endAtOf(r);
     const late = end !== null && ms(p.sub.at) > end + GRACE_MS;
@@ -1848,7 +2025,11 @@ async function endRound() {
         const has = (p.result && p.result.round === round) || T.graded.has(round + "|" + p.id);
         const sub = p.sub && p.sub.round === round;
         if (has || sub) return;
-        if (r.game === "cube") {
+        if (r.game === "spot") {
+          const result = spotResult(r, spotFound(p, round), round, true);
+          T.graded.set(round + "|" + p.id, result);
+          batch.update(pRefOf(p.id), { result, score: increment(result.points), total: increment(result.points) });
+        } else if (r.game === "cube") {
           const result = cubeResult(r, cubeMyAnswers(p, round), round, true);
           T.graded.set(round + "|" + p.id, result);
           batch.update(pRefOf(p.id), { result, score: increment(result.points), total: increment(result.points) });
@@ -1893,6 +2074,20 @@ async function startSym() {
     status: "playing", game: "sym", round: (r.round || 0) + 1, level: lv, sym: { lv, i: pick },
     startAt: serverTimestamp(), duration: stimes()[lv - 1], explain: deleteField(),
     [`used.S${lv}`]: reset ? [pick] : arrayUnion(pick)
+  });
+}
+async function startSpot() {
+  const r = T.room;
+  const lv = T.psel, L = SPOT_LEVELS[lv - 1];
+  const used = (r.used && r.used["P" + lv]) || [];
+  let cand = L.keys.filter((k) => !used.includes(k));
+  const reset = !cand.length;
+  if (reset) cand = [...L.keys];
+  const k = cand[Math.floor(Math.random() * cand.length)];
+  await updateDoc(T.roomRef, {
+    status: "playing", game: "spot", round: (r.round || 0) + 1, level: lv, spot: { lv, k },
+    startAt: serverTimestamp(), duration: ptimes()[lv - 1], explain: deleteField(),
+    [`used.P${lv}`]: reset ? [k] : arrayUnion(k)
   });
 }
 async function startCube() {
@@ -1948,7 +2143,7 @@ async function startRound() {
   const r = T.room;
   if (!r || r.status === "playing") return;
   $("startBtn").disabled = true;
-  try { if (isWG(T.game)) await startWallgo(); else if (T.game === "cube") await startCube(); else if (T.game === "sym") await startSym(); else await startFence(); }
+  try { if (isWG(T.game)) await startWallgo(); else if (T.game === "cube") await startCube(); else if (T.game === "sym") await startSym(); else if (T.game === "spot") await startSpot(); else await startFence(); }
   catch (e) { console.error(e); toast("시작하지 못했어요. 다시 눌러 주세요."); }
   finally { $("startBtn").disabled = false; }
 }
@@ -1999,6 +2194,21 @@ $("stimeMinus").addEventListener("click", () => changeSTime(-30));
 $("stimePlus").addEventListener("click", () => changeSTime(30));
 $("stimeFree").addEventListener("click", () => changeSTime("free"));
 const tSymBoard = new SymBoard($("tSym"));
+const tSpotGame = new SpotGame($("tSpot"), { wrongWait: 0 });
+$("spotLevelBtns").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-plv]");
+  if (!b || b.disabled) return;
+  T.psel = Number(b.dataset.plv); renderTeacher();
+  const L = SPOT_LEVELS[T.psel - 1]; if (L) L.keys.forEach(preloadSpot);
+});
+function changePTime(d) {
+  const arr = [...ptimes()], i = T.psel - 1, cur = arr[i];
+  arr[i] = d === "free" ? (cur > 0 ? 0 : DEFAULT_PTIMES[i]) : !(cur > 0) ? DEFAULT_PTIMES[i] : Math.min(900, Math.max(20, cur + d));
+  updateDoc(T.roomRef, { ptimes: arr }).catch(() => toast("시간을 바꾸지 못했어요."));
+}
+$("ptimeMinus").addEventListener("click", () => changePTime(-30));
+$("ptimePlus").addEventListener("click", () => changePTime(30));
+$("ptimeFree").addEventListener("click", () => changePTime("free"));
 $("timePlus").addEventListener("click", () => changeTime(30));
 function changeTurn(d) {
   updateDoc(T.roomRef, { turnSec: Math.min(120, Math.max(10, turnSec() + d)) }).catch(() => toast("시간을 바꾸지 못했어요."));
@@ -2038,12 +2248,14 @@ $("endBtn").addEventListener("click", async () => {
     ? "지금 라운드를 끝낼까요?\n아직 끝나지 않은 대결은 지금까지 만든 땅 넓이로 승부를 정해요."
     : T.room && T.room.game === "cube"
       ? "지금 라운드를 끝낼까요?\n다 풀지 못한 학생은 지금까지 푼 문제만 채점해요."
+      : T.room && T.room.game === "spot"
+        ? "지금 라운드를 끝낼까요?\n다 찾지 못한 학생은 지금까지 찾은 곳만큼 점수를 받아요."
       : "지금 라운드를 끝낼까요?\n아직 제출하지 않은 학생은 0점이에요.";
   if (await confirmBox(msg, "끝내기")) endRound();
 });
 $("answerBtn").addEventListener("click", () => {
   const r = T.room;
-  if (r && (r.game === "cube" || r.game === "sym")) { T.answer = !T.answer; renderTeacher(); return; }
+  if (r && (r.game === "cube" || r.game === "sym" || r.game === "spot")) { T.answer = !T.answer; renderTeacher(); return; }
   if (!r || !r.puzzle) return;
   const ans = answerOf(r);
   if (!ans) return toast("이 라운드의 정답을 찾을 수 없어요.");
