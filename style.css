@@ -572,3 +572,51 @@ h3 { margin: 0 0 10px; font-size: 1.2rem; }
 
 .fs-btn.on { background: #eaf7ff; border-color: var(--blue); color: var(--blue); }
 @media (max-width: 640px) { .fs-btn { font-size: 0; padding: 6px 10px; } .fs-btn::before { content: "⛶"; font-size: 1rem; } }
+
+
+/* ===== 10.2인치 태블릿(가로 1080×810 · 세로 810×1080) 맞춤 =====
+   게임 중에는 위 막대를 얇게 하고, 판을 남은 화면 높이에 꽉 차게 키움 (전체화면이면 더 커짐) */
+:root { --vh: 1vh; }
+@supports (height: 100dvh) { :root { --vh: 1dvh; } }
+.cube-play { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.cube-side { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+body.st-playing #student .bar { padding: 5px 12px; }
+body.st-playing #student .bar .chip { padding: 5px 12px; }
+body.st-playing .game { padding: 6px 10px 8px; gap: 6px; }
+body.st-playing .game-area { gap: 6px; }
+body.st-playing .game-msg:empty { display: none; }
+@media (min-width: 700px) and (min-height: 600px) {
+  /* 울타리치기 */
+  body.st-playing #stBoard.board { max-width: min(96vw, 980px); max-height: calc(100 * var(--vh) - 215px); }
+  body.st-playing .tools .btn { padding: 12px 20px; font-size: 1.1rem; }
+  /* 벽바둑 */
+  body.st-playing .board.wg { max-width: min(96vw, 900px); max-height: calc(100 * var(--vh) - 175px); }
+  /* 대칭 퍼즐 */
+  body.st-playing #symArea .sym-wrap { width: min(96vw, calc((100 * var(--vh) - 235px) * 1.32 + 16px)); }
+  body.st-playing .sym-tip { font-size: .95rem; }
+  /* 큐브 세기: 숫자 버튼을 손가락 크기로 */
+  .keypad { grid-template-columns: repeat(3, 96px); gap: 10px; }
+  .keypad button { height: 70px; font-size: 1.9rem; border-radius: 18px; }
+  .keypad button.ok { font-size: 1.4rem; }
+  .cube-ask { font-size: 1.6rem; }
+  .cube-ask b { font-size: 2.6rem; }
+  /* 캐릭터 고르기 칸 크게 */
+  .av-opt .av-mini { width: 96px; height: 120px; }
+}
+/* 세로 화면: 그림 위, 숫자 버튼 아래 */
+@media (min-width: 700px) and (orientation: portrait) {
+  body.st-playing #cbPic.cube-wrap { width: min(94vw, 760px); height: calc(100 * var(--vh) - 560px); min-height: 360px; }
+}
+/* 가로 화면: 그림 왼쪽 크게, 답 입력 오른쪽 */
+@media (min-width: 900px) and (orientation: landscape) {
+  body.st-playing .cube-play { flex-direction: row; justify-content: center; align-items: stretch; gap: 18px; }
+  body.st-playing #cbPic.cube-wrap { width: auto; flex: 1; max-width: 680px; height: calc(100 * var(--vh) - 150px); }
+  body.st-playing .cube-side { justify-content: center; min-width: 330px; }
+  #cubePractice .cube-wrap { height: min(300px, 34vh); }
+}
+/* 연습 창도 태블릿 화면에 맞게 */
+@media (min-width: 700px) and (min-height: 600px) {
+  .practice-card { max-height: calc(100 * var(--vh) - 24px); overflow: auto; }
+  #symPractice .sym-wrap { width: min(92vw, calc((100 * var(--vh) - 330px) * 1.32 + 16px)); }
+}

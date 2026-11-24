@@ -6,14 +6,14 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v2.5";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.5";
-import * as WG from "./wallgo.js?v=v2.5";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.5";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.5";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.5";
+import { PUZZLES } from "./puzzles.js?v=v2.6";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v2.6";
+import * as WG from "./wallgo.js?v=v2.6";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v2.6";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v2.6";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, wingInfo, WING_LEVELS } from "./avatar.js?v=v2.6";
 
-const VERSION = "v2.5";
+const VERSION = "v2.6";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -704,6 +704,7 @@ function renderStudent() {
   const res = me.result && me.result.round === r.round ? me.result : null;
   if (!res && celebrated !== null && celebrated !== r.round) porongFace("wave");
   $("stGame").classList.toggle("hidden", !playing);
+  document.body.classList.toggle("st-playing", playing);   // 게임 중: 판을 화면 높이에 맞춰 크게
   $("stLobby").classList.toggle("hidden", playing);
   if (playing) closePractice();
 
@@ -916,6 +917,7 @@ function renderStudentCube(r, me, res) {
   const picKey = r.round + ":" + q + ":" + (res ? "r" : "");
   if ($("cbPic").dataset.k !== picKey) {
     $("cbPic").dataset.k = picKey;
+    $("cubeArea").classList.toggle("review", !!res);
     $("cbPic").innerHTML = key && !res ? cubeSVG(key, L.w, L.h, { cls: "cube-svg big" }) : "";
   }
   $("cbAsk").classList.toggle("hidden", lock);

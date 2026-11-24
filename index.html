@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v2.5">
+<link rel="stylesheet" href="style.css?v=v2.6">
 </head>
 <body>
 
@@ -229,10 +229,14 @@
       <span class="chip prog" id="cbProg"></span>
       <span class="timer" id="cbTimer">0:00</span>
     </div>
-    <div class="cube-wrap" id="cbPic"></div>
-    <div class="cube-ask" id="cbAsk"><span>큐브는 모두</span><b id="cbIn">?</b><span>개</span></div>
-    <div class="keypad" id="cbPad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="del" class="del">⌫</button><button data-k="0">0</button><button data-k="ok" class="ok">확인</button></div>
-    <p id="cbMsg" class="game-msg"></p>
+    <div class="cube-play">
+     <div class="cube-wrap" id="cbPic"></div>
+     <div class="cube-side">
+      <div class="cube-ask" id="cbAsk"><span>큐브는 모두</span><b id="cbIn">?</b><span>개</span></div>
+      <div class="keypad" id="cbPad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="del" class="del">⌫</button><button data-k="0">0</button><button data-k="ok" class="ok">확인</button></div>
+      <p id="cbMsg" class="game-msg"></p>
+     </div>
+    </div>
     <div id="cbReview" class="hidden"></div>
    </div>
    <div id="wgArea" class="game-area hidden">
@@ -577,6 +581,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v2.5"></script>
+<script type="module" src="app.js?v=v2.6"></script>
 </body>
 </html>
