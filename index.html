@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😇</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=v1.1">
+<link rel="stylesheet" href="style.css?v=v1.11">
 </head>
 <body>
 
@@ -156,7 +156,6 @@
         <button class="btn sun big-ish" id="wgPracBtn">🧱 벽바둑 AI와 연습</button>
         <button class="btn sun big-ish" id="cubePracBtn">🧊 큐브 세기 연습</button>
         <button class="btn sun big-ish" id="symPracBtn">🦋 대칭 퍼즐 연습</button>
-        <button class="btn sun big-ish" id="spotPracBtn">🔍 달라진 그림 찾기 연습</button>
       </div>
     </div>
     <div class="lobby-grid">
@@ -279,25 +278,6 @@
       <button class="btn ghost" id="spReset">↩ 처음 자리로</button>
       <button class="btn ghost" id="spAnswer">💡 정답 보기</button>
       <button class="btn sun" id="spNext">🔄 다른 문제</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== 달라진 그림 찾기 연습 ===== -->
-<div id="spotPractice" class="overlay hidden">
-  <div class="practice-card spot-prac">
-    <div class="pr-head">
-      <h2>🔍 달라진 그림 찾기 연습</h2>
-      <button class="btn ghost small" id="ppClose">닫기 ✕</button>
-    </div>
-    <div class="pr-levels" id="ppLevels"></div>
-    <div class="pr-coach"><img class="porong mini" src="img/porong-oh.jpg" alt="포롱이"><div class="bubble" id="ppMsg"></div></div>
-    <div id="ppBoard"></div>
-    <div class="tools">
-      <button class="btn sun hidden" id="ppReady">✅ 다 외웠어요</button>
-      <button class="btn ghost" id="ppZoom">🔍 크게</button>
-      <button class="btn ghost" id="ppAnswer">💡 정답 보기</button>
-      <button class="btn sun" id="ppNext">🔄 다른 그림</button>
     </div>
   </div>
 </div>
@@ -435,7 +415,7 @@
             <button class="btn ghost small free-btn" id="ptimeFree">♾️ 제한 없음</button>
           </div>
           <p class="hint free-note hidden" id="ptimeNote">♾️ 시간 제한이 없어요. 모든 학생이 다 찾으면 자동으로 끝나요. 오래 걸리면 [라운드 끝내기]를 누르세요. 그때까지 찾은 곳만큼 점수를 받아요.</p>
-          <p class="hint">게임 방법: ① 👀 외우는 시간 동안 원래 그림만 보여요(학생은 [✅ 다 외웠어요]로 먼저 넘어갈 수 있어요) → ② 원래 그림은 사라지고 바뀐 그림만 나오면, 바뀐 곳을 찾아 톡! ⭐ 개수는 그림 속 장면의 크기예요(⭐ 가까이서 본 작은 장면 → ⭐⭐⭐ 멀리서 본 넓은 장면). 스타트를 누르면 고른 단계에서 아직 안 나온 그림 하나가 모두에게 똑같이 나가요. 다 찾으면 저절로 제출되고 먼저 찾은 순서대로 보너스, 일부만 찾으면 찾은 만큼 점수를 받아요. 틀린 곳을 누르면 1.5초 동안 누를 수 없어요. 외우는 시간·찾는 시간은 단계마다 따로 정해요.</p>
+          <p class="hint">게임 방법: ① 👀 외우는 시간 동안 원래 그림만 보여요(학생은 [✅ 다 외웠어요]로 먼저 넘어갈 수 있어요) → ② 원래 그림은 사라지고 바뀐 그림만 나오면, 바뀐 곳을 찾아 톡! 누를 기회는 바뀐 곳 개수만큼이고 틀리면 기회가 하나 줄어요(기회를 다 쓰면 저절로 제출). 혼자 연습은 없어요. ⭐ 개수는 그림 속 장면의 크기예요(⭐ 가까이서 본 작은 장면 → ⭐⭐⭐ 멀리서 본 넓은 장면). 스타트를 누르면 고른 단계에서 아직 안 나온 그림 하나가 모두에게 똑같이 나가요. 다 찾으면 저절로 제출되고 먼저 찾은 순서대로 보너스, 일부만 찾으면 찾은 만큼 점수를 받아요. 외우는 시간·찾는 시간은 단계마다 따로 정해요.</p>
         </div>
         <div id="cubePanel" class="hidden">
           <div id="cubeLevelBtns" class="level-btns"></div>
@@ -652,6 +632,6 @@
 <div id="toast" class="toast"></div>
 <div id="updBar" class="upd-bar hidden"><span id="updText"></span><button class="btn primary small" id="updBtn">지금 새로고침</button></div>
 
-<script type="module" src="app.js?v=v1.1"></script>
+<script type="module" src="app.js?v=v1.11"></script>
 </body>
 </html>

@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.1";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.1";
-import * as WG from "./wallgo.js?v=v1.1";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.1";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.1";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.1";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.1";
+import { PUZZLES } from "./puzzles.js?v=v1.11";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.11";
+import * as WG from "./wallgo.js?v=v1.11";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.11";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.11";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.11";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.11";
 
-const VERSION = "v1.1";
+const VERSION = "v1.11";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -45,13 +45,18 @@ const DEFAULT_PMEM = [15, 15, 15, 25, 25, 25, 40, 40, 40];
 // 외우기가 끝나는 때(서버 시각). startAt이 아직 안 정해졌으면 외우는 중으로 봄
 const spotMemEnd = (r) => { const s = ms(r && r.startAt); return s ? s + ((r.spot && r.spot.mem) || 0) * 1000 : Infinity; };
 const spotKey = (r) => (r && r.spot && spotBoxes(r.spot.k).length ? r.spot.k : null);
-// 진행 중 찾은 곳: edges 칸에 "라운드:번호,번호,…", 다 찾으면 sub로 제출
+// 진행 중 찾은 곳: edges 칸에 "라운드:번호,번호,…;t누른횟수", 다 찾거나 기회를 다 쓰면 sub로 제출
+// 누를 기회 = 바뀐 곳 개수 (아무 데나 마구 누르지 못하게)
+function spotText(p, round) {
+  if (p && p.sub && p.sub.round === round && typeof p.sub.edges === "string") return p.sub.edges;
+  if (p && typeof p.edges === "string" && p.edges.startsWith(round + ":")) return p.edges.slice(String(round).length + 1);
+  return "";
+}
 function spotFound(p, round) {
-  let t = null;
-  if (p && p.sub && p.sub.round === round && typeof p.sub.edges === "string") t = p.sub.edges;
-  else if (p && typeof p.edges === "string" && p.edges.startsWith(round + ":")) t = p.edges.slice(String(round).length + 1);
+  const t = spotText(p, round).split(";")[0];
   return t ? [...new Set(t.split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 0))] : [];
 }
+function spotTaps(p, round) { const m = spotText(p, round).match(/;t(\d+)/); return m ? Number(m[1]) : spotFound(p, round).length; }
 const isWG = (g) => g === "wallgo" || g === "wallgo2";
 // 방마다 쓸 게임: 방 문서 off 칸(끈 게임 이름 목록). 끈 게임은 선생님 게임 고르기·학생 연습·게임 방법에서 빠짐
 const gameOn = (r, g) => !(r && Array.isArray(r.off) && r.off.includes(g));
@@ -407,8 +412,10 @@ const EXPLAIN = {
     { title: "🔍 달라진 그림 찾기란?", text: "먼저 원래 그림을 잘 보고 외워요. 시간이 지나면 원래 그림은 사라져요!\n그다음 몇 곳이 바뀐 그림이 나오면, 외운 것과 달라진 곳을 모두 찾아요.", show: () => spotShow([], "orig") + pill("① 👀 외우기", "y") },
     { title: "👀 외우는 시간", text: "원래 그림만 보여요. 무엇이 어디에, 무슨 색으로 있는지 잘 외워요.\n다 외웠으면 [✅ 다 외웠어요]를 눌러 바로 시작해도 돼요. 시간이 끝나면 저절로 넘어가요.",
       show: () => spotShow([], "orig") + pill("시간이 끝나면 그림이 사라져요", "p") },
-    { title: "찾으면 톡!", text: "원래 그림은 사라지고 바뀐 그림만 나와요.\n외운 것과 달라진 곳을 톡 눌러요. 맞으면 ⭕, 틀린 곳을 누르면 ✕가 나오고 잠깐 누를 수 없어요!",
-      show: () => spotShow([0, 1], "chg") + pill("② 🔍 찾기", "y") + pill("맞으면 ⭕", "g") + pill("틀리면 ✕ · 잠깐 쉬기", "p") },
+    { title: "🎯 누를 기회", text: "누를 수 있는 기회는 바뀐 곳 개수만큼이에요. 5곳이 바뀌었으면 5번!\n틀린 곳을 누르면 기회가 하나 줄어요. 아무 데나 누르지 말고 확실한 곳만 눌러요.",
+      show: () => spotShow([0], "chg") + pill("기회 = 바뀐 곳 개수", "y") + pill("틀리면 기회 −1", "p") },
+    { title: "찾으면 톡!", text: "원래 그림은 사라지고 바뀐 그림만 나와요.\n외운 것과 달라진 곳을 톡 눌러요. 맞으면 ⭕, 틀리면 ✕!\n기회를 다 쓰거나 모두 찾으면 저절로 제출돼요.",
+      show: () => spotShow([0, 1], "chg") + pill("② 🔍 찾기", "y") + pill("맞으면 ⭕", "g") + pill("틀리면 ✕ · 기회 −1", "p") },
     { title: "🔍 크게 보기", text: "작은 곳이 잘 안 보이면 [🔍 크게]를 눌러요.\n크게 본 채로 그림을 끌면 둘러볼 수 있어요.", show: () => spotShow([], "chg") + pill("🔍 크게 / 작게", "y") + pill("끌기 = 둘러보기") },
     { title: "점수", text: "바뀐 곳을 모두 찾으면 저절로 제출! 먼저 찾을수록 높은 등수예요.\n일부만 찾아도 찾은 만큼 점수를 받아요. ⭐가 많고 어려운 단계일수록 점수가 커져요.",
       show: (r) => { const P = roomPts(r); return spotShow([0, 1, 2, 3, 4], "both") + pill(`모두 찾으면 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill("일부만 찾으면 찾은 만큼", "p") + pill(P.mult ? "어려운 단계 ×1.5까지" : "배율 없음"); } }
@@ -815,7 +822,7 @@ function renderStudent() {
 }
 
 // 선생님이 끈 게임은 연습 버튼·게임 방법 버튼을 숨기고, 열려 있던 연습 창도 닫음
-const PRAC = [["practiceBtn", "practice", ["fence"]], ["wgPracBtn", "wgPractice", ["wallgo", "wallgo2"]], ["cubePracBtn", "cubePractice", ["cube"]], ["symPracBtn", "symPractice", ["sym"]], ["spotPracBtn", "spotPractice", ["spot"]]];
+const PRAC = [["practiceBtn", "practice", ["fence"]], ["wgPracBtn", "wgPractice", ["wallgo", "wallgo2"]], ["cubePracBtn", "cubePractice", ["cube"]], ["symPracBtn", "symPractice", ["sym"]]];
 let gameOnKey = null;
 function applyGameOn(r) {
   const key = JSON.stringify((r && r.off) || []);
@@ -983,8 +990,9 @@ $("syReset").addEventListener("click", () => {
 const PT = { round: null, sent: null, saveT: null, msgT: null };
 const zoomLabel = (z) => (z >= 3 ? "↩ 원래 크기" : z >= 2 ? "🔍 더 크게" : "🔍 크게");
 const ptGame = new SpotGame($("ptBoard"), {
-  onFind: (i, found) => spotFindSave(found),
-  onWrong: (wait) => spotMsg($("ptMsg"), "✕ 거기는 똑같아요! 잠깐 쉬었다가 다시 찾아요", "bad", wait),
+  maxTaps: true, wrongWait: 600,
+  onFind: (i, found, taps) => spotFindSave(found, taps),
+  onWrong: (wait, found, taps) => { spotMsg($("ptMsg"), `✕ 거기는 똑같아요! 남은 기회 ${ptGame.tapsLeft}번`, "bad", 2000); spotFindSave(found, taps); },
   onZoom: (z) => ($("ptZoom").textContent = zoomLabel(z))
 });
 const stSpotAns = new SpotGame($("stSpotAns"));
@@ -994,10 +1002,10 @@ function spotMsg(el, text, cls, wait) {
   el.className = "game-msg" + (cls ? " " + cls : ""); el.textContent = text;
   if (wait) PT.msgT = setTimeout(() => { if (el.textContent === text) { el.textContent = ""; el.className = "game-msg"; } }, wait);
 }
-function spotProg() { $("ptProg").textContent = `찾은 곳 ${ptGame.found.length} / ${ptGame.total}`; }
+function spotProg() { $("ptProg").textContent = `찾은 곳 ${ptGame.found.length}/${ptGame.total} · 🎯 남은 기회 ${ptGame.tapsLeft}`; }
 // 지금 단계: 외우기(mem) → 찾기(find). 다 외웠어요를 눌렀거나, 이미 찾은 곳이 있거나(새로고침), 외우는 시간이 끝나면 찾기
 function spotPhase(r, me) {
-  if (PT.ready === r.round || (me && me.sub && me.sub.round === r.round) || spotFound(me, r.round).length) return "find";
+  if (PT.ready === r.round || (me && me.sub && me.sub.round === r.round) || spotTaps(me, r.round) > 0) return "find";
   return now() >= spotMemEnd(r) ? "find" : "mem";
 }
 function renderStudentSpot(r, me, res) {
@@ -1008,8 +1016,8 @@ function renderStudentSpot(r, me, res) {
   const phase = res || timeUp ? "find" : spotPhase(r, me);
   const lock = submitted || timeUp || !!res || PT.sent === r.round || phase === "mem";
   if (PT.round !== r.round) {
-    PT.round = r.round; PT.sent = null; PT.phase = null;
-    ptGame.load(key, spotFound(me, r.round), { locked: lock });
+    PT.round = r.round; PT.sent = null; PT.phase = null; PT.lastN = spotFound(me, r.round).length;
+    ptGame.load(key, spotFound(me, r.round), { locked: lock, taps: spotTaps(me, r.round) });
     $("ptLevel").textContent = `🔍 ${spotTitle(key)}`;
   } else if (ptGame.locked !== lock) ptGame.setLocked(lock);
   if (PT.phase !== phase) { PT.phase = phase; ptGame.setZoom(1); ptGame.setView(phase === "mem" ? "orig" : "chg"); }
@@ -1017,23 +1025,23 @@ function renderStudentSpot(r, me, res) {
   $("ptZoom").disabled = false;
   spotProg();
   const msg = $("ptMsg");
-  if (phase === "mem") { $("ptProg").textContent = `바뀔 곳 ${ptGame.total}곳`; spotMsg(msg, "👀 원래 그림을 잘 외워요! 시간이 끝나면 사라지고 바뀐 그림이 나와요", ""); return; }
-  if (PT.shownFind !== r.round && !res && !submitted && !timeUp) { PT.shownFind = r.round; spotMsg(msg, "🔍 원래 그림이 사라졌어요! 바뀐 곳을 찾아 톡 눌러요", "", 3000); }
+  if (phase === "mem") { $("ptProg").textContent = `바뀔 곳 ${ptGame.total}곳 · 🎯 기회 ${ptGame.total}번`; spotMsg(msg, "👀 원래 그림을 잘 외워요! 시간이 끝나면 사라지고 바뀐 그림이 나와요", ""); return; }
+  if (PT.shownFind !== r.round && !res && !submitted && !timeUp) { PT.shownFind = r.round; spotMsg(msg, `🔍 원래 그림이 사라졌어요! 바뀐 곳을 찾아 톡 눌러요 (기회 ${ptGame.total}번)`, "", 3000); }
   if (res) {
     const t = resultText(res);
     spotMsg(msg, `${t.big} ${res.points ? `+${res.points}점` : "0점"}`, t.ok ? "ok" : "bad");
     celebrate(res);
-  } else if (submitted || PT.sent === r.round) spotMsg(msg, "🔍 모두 찾았어요! 채점 중이에요…", "ok");
+  } else if (submitted || PT.sent === r.round) spotMsg(msg, ptGame.found.length >= ptGame.total ? "🔍 모두 찾았어요! 채점 중이에요…" : `🎯 기회를 다 썼어요 (${ptGame.found.length}곳 찾음). 채점 중이에요…`, "ok");
   else if (timeUp) spotMsg(msg, "⏰ 시간 종료!", "bad");
 }
-function spotFindSave(found) {
+function spotFindSave(found, taps) {
   const r = ST.room, me = ST.me;
   spotProg();
   if (!r || r.game !== "spot" || r.status !== "playing" || !ST.pRef) return;
   if (me && me.sub && me.sub.round === r.round) return;
-  const txt = found.join(","), round = r.round;
+  const txt = found.join(",") + ";t" + taps, round = r.round;
   clearTimeout(PT.saveT);
-  if (found.length >= ptGame.total) {
+  if (found.length >= ptGame.total || taps >= ptGame.total) {
     PT.sent = round;
     ptGame.setLocked(true);
     renderStudent();
@@ -1041,7 +1049,7 @@ function spotFindSave(found) {
       .catch((e) => { console.error(e); PT.sent = null; toast("제출하지 못했어요. 시간이 끝났을 수 있어요."); renderStudent(); });
     return;
   }
-  spotMsg($("ptMsg"), `⭕ 찾았어요! 남은 곳 ${ptGame.total - found.length}곳`, "ok", 1500);
+  if (found.length && found[found.length - 1] !== undefined && PT.lastN !== found.length) { PT.lastN = found.length; spotMsg($("ptMsg"), `⭕ 찾았어요! 남은 곳 ${ptGame.total - found.length}곳 · 남은 기회 ${ptGame.tapsLeft}번`, "ok", 2000); }
   PT.saveT = setTimeout(() => updateDoc(ST.pRef, { edges: `${round}:${txt}` }).catch(console.warn), 300);
 }
 $("ptZoom").addEventListener("click", () => ptGame.setZoom(ptGame.zoom >= 3 ? 1 : ptGame.zoom + 1));
@@ -1336,7 +1344,7 @@ function prLoad(lv) {
   }).join("");
 }
 function openPractice() { $("practice").classList.remove("hidden"); prLoad(PR.lv); }
-function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); const cp = document.getElementById("cubePractice"); if (cp) cp.classList.add("hidden"); const sp = document.getElementById("symPractice"); if (sp) sp.classList.add("hidden"); $("spotPractice").classList.add("hidden"); }
+function closePractice() { $("practice").classList.add("hidden"); closeWgPractice(); const cp = document.getElementById("cubePractice"); if (cp) cp.classList.add("hidden"); const sp = document.getElementById("symPractice"); if (sp) sp.classList.add("hidden"); }
 $("practiceBtn").addEventListener("click", openPractice);
 $("prClose").addEventListener("click", closePractice);
 $("prLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-prlv]"); if (b) prLoad(Number(b.dataset.prlv)); });
@@ -1448,55 +1456,6 @@ $("spNext").addEventListener("click", () => spLoad(SP.lv));
 $("spReset").addEventListener("click", () => spLoad(SP.lv, false));
 $("spAnswer").addEventListener("click", () => { spBoard.load(SP.pz, answerState(SP.pz), { locked: true }); $("spMsg").textContent = "이렇게 하면 돼! (다른 모양도 대칭이면 정답이야)"; $("spMsg").className = "bubble"; });
 $("spLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-splv]"); if (b) spLoad(Number(b.dataset.splv)); });
-
-// =====================================================================
-// 달라진 그림 찾기 혼자 연습하기 (점수 없음)
-// =====================================================================
-const PP = { lv: 0, key: null, t: null, left: 0 };
-const ppGame = new SpotGame($("ppBoard"), {
-  onFind: (i, found) => {
-    if (found.length >= ppGame.total) { ppSay(`${ppGame.total}곳 모두 찾았어! 🎉 다른 그림도 해 볼까?`, "ok"); ppGame.setLocked(true); confetti(); }
-    else ppSay(`찾았다! 남은 곳은 ${ppGame.total - found.length}곳이야.`, "ok");
-  },
-  onWrong: () => ppSay("거기는 똑같아! 잠깐 쉬었다가 다시 찾아 봐.", "bad"),
-  onZoom: (z) => ($("ppZoom").textContent = zoomLabel(z))
-});
-function ppSay(t, cls = "") { $("ppMsg").textContent = t; $("ppMsg").className = "bubble" + (cls ? " " + cls : ""); }
-function ppLoad(lv, next = true) {
-  PP.lv = lv;
-  const L = SPOT_LEVELS[lv];
-  if (next || !PP.key || !L.keys.includes(PP.key)) {
-    const c = L.keys.filter((k) => k !== PP.key);
-    PP.key = (c.length ? c : L.keys)[Math.floor(Math.random() * (c.length || L.keys.length))];
-  }
-  ppGame.load(PP.key, [], { locked: true });
-  $("ppLevels").innerHTML = SPOT_LEVELS.map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-pplv="${i}">${x.name}</button>`).join("");
-  // ① 외우기: 원래 그림만 보여 주고 시간을 셈
-  clearInterval(PP.t);
-  ppGame.setZoom(1); ppGame.setView("orig");
-  $("ppReady").classList.remove("hidden");
-  PP.left = DEFAULT_PMEM[lv];
-  const tick = () => {
-    if (PP.left <= 0) return ppFind();
-    ppSay(`👀 원래 그림을 잘 외워 봐! ${PP.left}초 뒤에 사라지고 ${ppGame.total}곳이 바뀐 그림이 나와.`);
-    PP.left--;
-  };
-  tick(); PP.t = setInterval(tick, 1000);
-}
-// ② 찾기: 원래 그림은 사라지고 바뀐 그림만
-function ppFind() {
-  clearInterval(PP.t);
-  $("ppReady").classList.add("hidden");
-  ppGame.setZoom(1); ppGame.setView("chg"); ppGame.setLocked(false);
-  ppSay(`원래 그림이 사라졌어! 바뀐 곳 ${ppGame.total}곳을 찾아서 톡 눌러 봐.`);
-}
-$("ppReady").addEventListener("click", ppFind);
-$("spotPracBtn").addEventListener("click", () => { $("spotPractice").classList.remove("hidden"); ppLoad(PP.lv, !PP.key); });
-$("ppClose").addEventListener("click", () => { clearInterval(PP.t); $("spotPractice").classList.add("hidden"); });
-$("ppNext").addEventListener("click", () => ppLoad(PP.lv));
-$("ppAnswer").addEventListener("click", () => { clearInterval(PP.t); $("ppReady").classList.add("hidden"); ppGame.setZoom(1); ppGame.setView("both"); ppGame.setShowAll(true); ppGame.setLocked(true); ppSay("왼쪽이 원래 그림, 오른쪽이 바뀐 그림이야. 주황 동그라미가 못 찾은 곳! [🔄 다른 그림]으로 또 해 보자."); });
-$("ppZoom").addEventListener("click", () => ppGame.setZoom(ppGame.zoom >= 3 ? 1 : ppGame.zoom + 1));
-$("ppLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-pplv]"); if (b) ppLoad(Number(b.dataset.pplv)); });
 
 // =====================================================================
 // 큐브 세기 혼자 연습하기 (점수 없음, 바로 정답 확인)

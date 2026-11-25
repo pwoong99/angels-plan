@@ -674,13 +674,10 @@ body.st-playing .game-msg:empty { display: none; }
 #exSpot { width: min(720px, 100%); }
 #stSpotAns, #tSpot { margin-top: 6px; }
 /* 연습 창 */
-.spot-prac { width: 96vw; max-width: 1100px; }
-#ppBoard .spot-view { width: min(44vw, calc((100 * var(--vh) - 340px) * 1.339)); }
 /* 세로 화면·좁은 화면: 위아래로 */
 @media (orientation: portrait), (max-width: 640px) {
   .spot-play:not(.spot-small) { flex-direction: column; }
   .spot-play:not(.spot-small) .spot-view { width: min(94vw, calc((100 * var(--vh) - 380px) / 2 * 1.339)); }
-  #ppBoard .spot-view { width: min(88vw, calc((100 * var(--vh) - 400px) / 2 * 1.339)); }
 }
 /* 게임 중: 남은 화면에 꽉 차게 (가로면 나란히, 세로면 위아래) */
 body.st-playing #ptBoard .spot-view { width: min(48.5vw, calc((100 * var(--vh) - 125px) * 1.339)); }
@@ -688,7 +685,6 @@ body.st-playing #ptBoard .spot-view { width: min(48.5vw, calc((100 * var(--vh) -
   body.st-playing #ptBoard .spot-view { width: min(96vw, calc((100 * var(--vh) - 180px) / 2 * 1.339)); }
 }
 body.st-playing #spotArea .game-top { flex-wrap: nowrap; }
-#spotPractice .practice-card { align-items: center; }
 
 /* 이 방에서 쓸 게임 켜기·끄기 */
 .game-pick-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -698,7 +694,6 @@ body.st-playing #spotArea .game-top { flex-wrap: nowrap; }
 
 /* 달라진 그림 찾기: 외우기·찾기 때는 그림 한 장만 크게 */
 .spot-play.single .spot-view { width: min(94vw, 760px, calc((100 * var(--vh) - 330px) * 1.339)); }
-#ppBoard.single .spot-view { width: min(90vw, 900px, calc((100 * var(--vh) - 340px) * 1.339)); }
 body.st-playing #ptBoard.single .spot-view { width: min(97vw, calc((100 * var(--vh) - 165px) * 1.339)); }
 .spot-play.single[data-view="orig"] .spot-view { border-color: #f59f00; }
 .spot-play.single[data-view="orig"] .spot-tag::after { content: " · 잘 외워요!"; }

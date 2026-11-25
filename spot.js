@@ -86,6 +86,7 @@ export class SpotGame {
       this.views.forEach((v) => (v.img.src = spotImg(key, v.which)));
     }
     this.found = [...found]; this.locked = !!o.locked; this.showAll = !!o.showAll;
+    this.taps = o.taps || 0;   // 지금까지 누른 횟수 (opt.maxTaps가 있으면 그만큼만 누를 수 있음)
     this.root.classList.toggle("locked", this.locked);
     this.place(); this.draw();
   }
@@ -98,6 +99,7 @@ export class SpotGame {
   setLocked(b) { this.locked = !!b; this.root.classList.toggle("locked", this.locked); }
   setShowAll(b) { this.showAll = !!b; this.draw(); }
   get total() { return spotBoxes(this.key).length; }
+  get tapsLeft() { return this.opt.maxTaps ? Math.max(0, this.total - this.taps) : Infinity; }
   setZoom(z, cx, cy) {
     z = Math.max(1, Math.min(3, z));
     const vw = SPOT_W / this.zoom, vh = SPOT_H / this.zoom;
@@ -148,12 +150,16 @@ export class SpotGame {
   tap(v, cx, cy) {
     if (this.locked || !this.key) return;
     if (Date.now() < this.waitUntil) return;
+    if (this.opt.maxTaps && this.tapsLeft <= 0) return;
     const p = this.toPic(v, cx, cy);
+    // 이미 찾은 곳을 또 누르면 기회를 쓰지 않고 무시
+    if (this.found.some((j) => { const b = spotBoxes(this.key)[j]; return b && p.x >= b[0] - 16 && p.x <= b[0] + b[2] + 16 && p.y >= b[1] - 16 && p.y <= b[1] + b[3] + 16; })) return;
     const i = hitSpot(this.key, p.x, p.y, this.found);
+    this.taps++;
     if (i >= 0) {
       this.found.push(i);
       this.draw(i);
-      if (this.opt.onFind) this.opt.onFind(i, [...this.found]);
+      if (this.opt.onFind) this.opt.onFind(i, [...this.found], this.taps);
       return;
     }
     // 틀린 곳: 빨간 ✕ 와 잠깐 쉬기
@@ -170,7 +176,7 @@ export class SpotGame {
     });
     this.root.classList.add("wrong");
     setTimeout(() => this.root.classList.remove("wrong"), Math.max(400, wait));
-    if (this.opt.onWrong) this.opt.onWrong(wait);
+    if (this.opt.onWrong) this.opt.onWrong(wait, [...this.found], this.taps);
   }
   draw(fresh) {
     const B = spotBoxes(this.key);
