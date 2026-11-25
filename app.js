@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.04";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.04";
-import * as WG from "./wallgo.js?v=v1.04";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.04";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.04";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.04";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.04";
+import { PUZZLES } from "./puzzles.js?v=v1.1";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.1";
+import * as WG from "./wallgo.js?v=v1.1";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.1";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.1";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.1";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.1";
 
-const VERSION = "v1.04";
+const VERSION = "v1.1";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -35,11 +35,15 @@ const GAMES = {
   wallgo2: { name: "벽바둑 2", icon: "🔷", desc: "벽바둑에 네모 말(곧게 1~2칸)·동그라미 말(ㄱ자로 꼭 2칸)이 생겼어요 · 2~4명", team: false },
   sym: { name: "대칭 퍼즐", icon: "🦋", desc: "조각을 옮기고 돌려서 선대칭 모양 만들기 · 개인전 · 먼저 완성할수록 높은 등수", team: false },
   cube: { name: "큐브 세기", icon: "🧊", desc: "쌓인 큐브가 모두 몇 개인지 빨리 세기 · 개인전 · 한 판 5문제", team: false },
-  spot: { name: "달라진 그림 찾기", icon: "🔍", desc: "두 그림에서 다른 곳을 모두 찾기 · 개인전 · 다 찾으면 빨리 찾은 순서로 등수", team: false }
+  spot: { name: "달라진 그림 찾기", icon: "🔍", desc: "원래 그림을 외운 뒤, 사라지고 나온 바뀐 그림에서 바뀐 곳 찾기 · 개인전 · 다 찾으면 빨리 찾은 순서로 등수", team: false }
 };
 // 달라진 그림 찾기: 9단계(⭐ 세트 난이도 × 쉬움·보통·어려움), 단계별 기본 시간과 배율
 const DEFAULT_PTIMES = [90, 120, 180, 90, 150, 180, 120, 180, 240];
 const SPOT_MULT = [0.6, 0.7, 0.8, 0.8, 0.9, 1, 1.1, 1.3, 1.5];
+// 외우는 시간(초): 원래 그림만 보여 주는 시간. ⭐ 작은 장면은 짧게, ⭐⭐⭐ 넓은 장면은 길게
+const DEFAULT_PMEM = [15, 15, 15, 25, 25, 25, 40, 40, 40];
+// 외우기가 끝나는 때(서버 시각). startAt이 아직 안 정해졌으면 외우는 중으로 봄
+const spotMemEnd = (r) => { const s = ms(r && r.startAt); return s ? s + ((r.spot && r.spot.mem) || 0) * 1000 : Infinity; };
 const spotKey = (r) => (r && r.spot && spotBoxes(r.spot.k).length ? r.spot.k : null);
 // 진행 중 찾은 곳: edges 칸에 "라운드:번호,번호,…", 다 찾으면 sub로 제출
 function spotFound(p, round) {
@@ -337,11 +341,13 @@ function symShow(answer) {
 }
 const SPOT_DEMO = "1_easy";
 let exSpot = null;
-function spotShow(found) {
+function spotShow(found, view = "both") {
   noBoard();
   $("exSpot").style.display = "";
   if (!exSpot) exSpot = new SpotGame($("exSpot"));
   exSpot.load(SPOT_DEMO, found, { locked: true });
+  exSpot.setView(view);
+  return "";
 }
 const CUBE_DEMO = { L: CUBES[1], key: CUBES[1].puzzles[0] };
 function cubeShow(top) {
@@ -398,12 +404,14 @@ const EXPLAIN = {
       show: (r) => { noBoard(); const P = roomPts(r); return pill(`완성 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill(P.mult ? "어려운 단계 ×1.5까지" : "배율 없음") + pill(`틀려도 참여 ${P.part}점`); } }
   ],
   spot: [
-    { title: "🔍 달라진 그림 찾기란?", text: "똑같아 보이는 두 그림에서 다른 곳을 모두 찾는 게임이에요.\n왼쪽(위)은 원래 그림, 오른쪽(아래)은 몇 곳이 바뀐 그림이에요.", show: () => spotShow([]) },
-    { title: "찾으면 톡!", text: "다른 곳을 찾으면 두 그림 중 아무 쪽이나 그 자리를 톡 눌러요.\n맞으면 동그라미가 생겨요. 틀린 곳을 누르면 ✕가 나오고 잠깐 누를 수 없어요!",
-      show: () => { spotShow([0, 1]); return pill("맞으면 ⭕", "g") + pill("틀리면 ✕ · 잠깐 쉬기", "p"); } },
-    { title: "🔍 크게 보기", text: "작은 곳이 잘 안 보이면 [🔍 크게]를 눌러요.\n크게 본 채로 그림을 끌면 두 그림이 함께 움직여요.", show: () => { spotShow([]); return pill("🔍 크게 / 작게", "y") + pill("끌기 = 둘러보기"); } },
-    { title: "점수", text: "다른 곳을 모두 찾으면 저절로 제출! 먼저 찾을수록 높은 등수예요.\n일부만 찾아도 찾은 만큼 점수를 받아요. ⭐가 많고 어려운 단계일수록 점수가 커져요.",
-      show: (r) => { spotShow([0, 1, 2, 3, 4]); const P = roomPts(r); return pill(`모두 찾으면 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill("일부만 찾으면 찾은 만큼", "p") + pill(P.mult ? "어려운 단계 ×1.5까지" : "배율 없음"); } }
+    { title: "🔍 달라진 그림 찾기란?", text: "먼저 원래 그림을 잘 보고 외워요. 시간이 지나면 원래 그림은 사라져요!\n그다음 몇 곳이 바뀐 그림이 나오면, 외운 것과 달라진 곳을 모두 찾아요.", show: () => spotShow([], "orig") + pill("① 👀 외우기", "y") },
+    { title: "👀 외우는 시간", text: "원래 그림만 보여요. 무엇이 어디에, 무슨 색으로 있는지 잘 외워요.\n다 외웠으면 [✅ 다 외웠어요]를 눌러 바로 시작해도 돼요. 시간이 끝나면 저절로 넘어가요.",
+      show: () => spotShow([], "orig") + pill("시간이 끝나면 그림이 사라져요", "p") },
+    { title: "찾으면 톡!", text: "원래 그림은 사라지고 바뀐 그림만 나와요.\n외운 것과 달라진 곳을 톡 눌러요. 맞으면 ⭕, 틀린 곳을 누르면 ✕가 나오고 잠깐 누를 수 없어요!",
+      show: () => spotShow([0, 1], "chg") + pill("② 🔍 찾기", "y") + pill("맞으면 ⭕", "g") + pill("틀리면 ✕ · 잠깐 쉬기", "p") },
+    { title: "🔍 크게 보기", text: "작은 곳이 잘 안 보이면 [🔍 크게]를 눌러요.\n크게 본 채로 그림을 끌면 둘러볼 수 있어요.", show: () => spotShow([], "chg") + pill("🔍 크게 / 작게", "y") + pill("끌기 = 둘러보기") },
+    { title: "점수", text: "바뀐 곳을 모두 찾으면 저절로 제출! 먼저 찾을수록 높은 등수예요.\n일부만 찾아도 찾은 만큼 점수를 받아요. ⭐가 많고 어려운 단계일수록 점수가 커져요.",
+      show: (r) => { const P = roomPts(r); return spotShow([0, 1, 2, 3, 4], "both") + pill(`모두 찾으면 ${P.base}점`, "g") + pill(`1등 +${P.top} … ${P.top}등 +1`, "y") + pill("일부만 찾으면 찾은 만큼", "p") + pill(P.mult ? "어려운 단계 ×1.5까지" : "배율 없음"); } }
   ],
   cube: [
     { title: "🧊 큐브 세기란?", text: "쌓여 있는 큐브가 모두 몇 개인지 세는 게임이에요.\n한 판에 5문제! 정확하게, 그리고 빠르게 세어 봐요.", show: () => cubeShow(false) },
@@ -792,7 +800,7 @@ function renderStudent() {
     if (symEnd && stSymAnsKey !== r.round) { stSymAnsKey = r.round; stSymAns.load(symPz(r), answerState(symPz(r)), { locked: true }); }
     const spotEnd = r.status === "ended" && r.round > 0 && r.game === "spot" && spotKey(r);
     $("stSpotAns").classList.toggle("hidden", !spotEnd);
-    if (spotEnd && stSpotAnsKey !== r.round) { stSpotAnsKey = r.round; stSpotAns.load(spotKey(r), spotFound(me, r.round), { locked: true, showAll: true }); }
+    if (spotEnd && stSpotAnsKey !== r.round) { stSpotAnsKey = r.round; stSpotAns.load(spotKey(r), spotFound(me, r.round), { locked: true, showAll: true }); stSpotAns.setView("both"); }
     const ans = r.status === "ended" && r.round > 0 && r.game === "fence" ? answerOf(r) : null;
     $("stAnswerCard").hidden = !ans && !cubeEnd && !symEnd && !spotEnd;
     $("stAnswerBoard").style.display = ans ? "" : "none";
@@ -987,20 +995,30 @@ function spotMsg(el, text, cls, wait) {
   if (wait) PT.msgT = setTimeout(() => { if (el.textContent === text) { el.textContent = ""; el.className = "game-msg"; } }, wait);
 }
 function spotProg() { $("ptProg").textContent = `찾은 곳 ${ptGame.found.length} / ${ptGame.total}`; }
+// 지금 단계: 외우기(mem) → 찾기(find). 다 외웠어요를 눌렀거나, 이미 찾은 곳이 있거나(새로고침), 외우는 시간이 끝나면 찾기
+function spotPhase(r, me) {
+  if (PT.ready === r.round || (me && me.sub && me.sub.round === r.round) || spotFound(me, r.round).length) return "find";
+  return now() >= spotMemEnd(r) ? "find" : "mem";
+}
 function renderStudentSpot(r, me, res) {
   const key = spotKey(r);
   if (!key) return;
   const submitted = !!(me.sub && me.sub.round === r.round);
   const end = endAtOf(r), timeUp = end !== null && now() > end;
-  const lock = submitted || timeUp || !!res || PT.sent === r.round;
+  const phase = res || timeUp ? "find" : spotPhase(r, me);
+  const lock = submitted || timeUp || !!res || PT.sent === r.round || phase === "mem";
   if (PT.round !== r.round) {
-    PT.round = r.round; PT.sent = null;
+    PT.round = r.round; PT.sent = null; PT.phase = null;
     ptGame.load(key, spotFound(me, r.round), { locked: lock });
     $("ptLevel").textContent = `🔍 ${spotTitle(key)}`;
   } else if (ptGame.locked !== lock) ptGame.setLocked(lock);
+  if (PT.phase !== phase) { PT.phase = phase; ptGame.setZoom(1); ptGame.setView(phase === "mem" ? "orig" : "chg"); }
+  $("ptReady").classList.toggle("hidden", phase !== "mem");
   $("ptZoom").disabled = false;
   spotProg();
   const msg = $("ptMsg");
+  if (phase === "mem") { $("ptProg").textContent = `바뀔 곳 ${ptGame.total}곳`; spotMsg(msg, "👀 원래 그림을 잘 외워요! 시간이 끝나면 사라지고 바뀐 그림이 나와요", ""); return; }
+  if (PT.shownFind !== r.round && !res && !submitted && !timeUp) { PT.shownFind = r.round; spotMsg(msg, "🔍 원래 그림이 사라졌어요! 바뀐 곳을 찾아 톡 눌러요", "", 3000); }
   if (res) {
     const t = resultText(res);
     spotMsg(msg, `${t.big} ${res.points ? `+${res.points}점` : "0점"}`, t.ok ? "ok" : "bad");
@@ -1027,6 +1045,7 @@ function spotFindSave(found) {
   PT.saveT = setTimeout(() => updateDoc(ST.pRef, { edges: `${round}:${txt}` }).catch(console.warn), 300);
 }
 $("ptZoom").addEventListener("click", () => ptGame.setZoom(ptGame.zoom >= 3 ? 1 : ptGame.zoom + 1));
+$("ptReady").addEventListener("click", () => { if (ST.room) { PT.ready = ST.room.round; renderStudent(); } });
 
 // ----- 큐브 세기 (학생) -----
 // 진행 중 답은 edges 칸에 "라운드:답,답,…"로 저장(새로고침해도 이어짐), 다 풀면 sub로 제출
@@ -1206,13 +1225,29 @@ function studentTick() {
     }
     return;
   }
+  // 달라진 그림 찾기: 외우는 동안은 남은 외우기 시간, 외우기가 끝나면 찾기 화면으로
+  let spotMem = false;
+  if (r.game === "spot") {
+    const ph = spotPhase(r, ST.me);
+    if (ph !== PT.phase && PT.round === r.round) renderStudent();
+    if (ph === "mem") {
+      spotMem = true;
+      const ml = spotMemEnd(r) === Infinity ? (r.spot && r.spot.mem) || 0 : (spotMemEnd(r) - now()) / 1000;
+      $("ptTimer").textContent = "👀 " + fmtTime(ml); $("ptTimer").classList.remove("free"); $("ptTimer").classList.toggle("warn", ml <= 5);
+    }
+  }
   const end = endAtOf(r);
   if (end === null) {   // 제한 시간 없음: 지난 시간만 보여 줌
-    for (const el of [$("stTimer"), $("cbTimer"), $("syTimer"), $("ptTimer")]) { el.textContent = "⏱ " + fmtTime(elapsedOf(r)); el.classList.remove("warn"); el.classList.add("free"); }
+    for (const el of [$("stTimer"), $("cbTimer"), $("syTimer"), $("ptTimer")]) {
+      if (spotMem && el.id === "ptTimer") continue;
+      const el2 = r.game === "spot" && el.id === "ptTimer" && spotMemEnd(r) !== Infinity ? Math.max(0, (now() - spotMemEnd(r)) / 1000) : elapsedOf(r);
+      el.textContent = "⏱ " + fmtTime(el2); el.classList.remove("warn"); el.classList.add("free");
+    }
     return;
   }
   const left = (end - now()) / 1000;
   for (const el of [$("stTimer"), $("cbTimer"), $("syTimer"), $("ptTimer")]) {
+    if (spotMem && el.id === "ptTimer") continue;
     el.classList.remove("free");
     el.textContent = fmtTime(left);
     el.classList.toggle("warn", left <= 10 && left > 0);
@@ -1417,7 +1452,7 @@ $("spLevels").addEventListener("click", (e) => { const b = e.target.closest("[da
 // =====================================================================
 // 달라진 그림 찾기 혼자 연습하기 (점수 없음)
 // =====================================================================
-const PP = { lv: 0, key: null };
+const PP = { lv: 0, key: null, t: null, left: 0 };
 const ppGame = new SpotGame($("ppBoard"), {
   onFind: (i, found) => {
     if (found.length >= ppGame.total) { ppSay(`${ppGame.total}곳 모두 찾았어! 🎉 다른 그림도 해 볼까?`, "ok"); ppGame.setLocked(true); confetti(); }
@@ -1434,14 +1469,32 @@ function ppLoad(lv, next = true) {
     const c = L.keys.filter((k) => k !== PP.key);
     PP.key = (c.length ? c : L.keys)[Math.floor(Math.random() * (c.length || L.keys.length))];
   }
-  ppGame.load(PP.key, []);
+  ppGame.load(PP.key, [], { locked: true });
   $("ppLevels").innerHTML = SPOT_LEVELS.map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-pplv="${i}">${x.name}</button>`).join("");
-  ppSay(`두 그림에서 다른 곳 ${ppGame.total}곳을 찾아서 톡 눌러 봐!`);
+  // ① 외우기: 원래 그림만 보여 주고 시간을 셈
+  clearInterval(PP.t);
+  ppGame.setZoom(1); ppGame.setView("orig");
+  $("ppReady").classList.remove("hidden");
+  PP.left = DEFAULT_PMEM[lv];
+  const tick = () => {
+    if (PP.left <= 0) return ppFind();
+    ppSay(`👀 원래 그림을 잘 외워 봐! ${PP.left}초 뒤에 사라지고 ${ppGame.total}곳이 바뀐 그림이 나와.`);
+    PP.left--;
+  };
+  tick(); PP.t = setInterval(tick, 1000);
 }
+// ② 찾기: 원래 그림은 사라지고 바뀐 그림만
+function ppFind() {
+  clearInterval(PP.t);
+  $("ppReady").classList.add("hidden");
+  ppGame.setZoom(1); ppGame.setView("chg"); ppGame.setLocked(false);
+  ppSay(`원래 그림이 사라졌어! 바뀐 곳 ${ppGame.total}곳을 찾아서 톡 눌러 봐.`);
+}
+$("ppReady").addEventListener("click", ppFind);
 $("spotPracBtn").addEventListener("click", () => { $("spotPractice").classList.remove("hidden"); ppLoad(PP.lv, !PP.key); });
-$("ppClose").addEventListener("click", () => $("spotPractice").classList.add("hidden"));
+$("ppClose").addEventListener("click", () => { clearInterval(PP.t); $("spotPractice").classList.add("hidden"); });
 $("ppNext").addEventListener("click", () => ppLoad(PP.lv));
-$("ppAnswer").addEventListener("click", () => { ppGame.setShowAll(true); ppGame.setLocked(true); ppSay("주황 동그라미가 못 찾은 곳이야. [🔄 다른 그림]으로 또 해 보자!"); });
+$("ppAnswer").addEventListener("click", () => { clearInterval(PP.t); $("ppReady").classList.add("hidden"); ppGame.setZoom(1); ppGame.setView("both"); ppGame.setShowAll(true); ppGame.setLocked(true); ppSay("왼쪽이 원래 그림, 오른쪽이 바뀐 그림이야. 주황 동그라미가 못 찾은 곳! [🔄 다른 그림]으로 또 해 보자."); });
 $("ppZoom").addEventListener("click", () => ppGame.setZoom(ppGame.zoom >= 3 ? 1 : ppGame.zoom + 1));
 $("ppLevels").addEventListener("click", (e) => { const b = e.target.closest("[data-pplv]"); if (b) ppLoad(Number(b.dataset.pplv)); });
 
@@ -1621,6 +1674,7 @@ const mRefOf = (id) => doc(db, "rooms", T.code, "matches", id);
 const times = () => { const t = T.room && T.room.times; return Array.isArray(t) && t.length === PUZZLES.length ? t : DEFAULT_TIMES; };
 const stimes = () => { const t = T.room && T.room.stimes; return Array.isArray(t) && t.length === SYM.levels.length ? t : DEFAULT_STIMES; };   // 0 = 제한 시간 없음
 const ctimes = () => { const t = T.room && T.room.ctimes; return Array.isArray(t) && t.length === CUBES.length ? t : DEFAULT_CTIMES; };   // 0 = 제한 시간 없음
+const pmems = () => { const t = T.room && T.room.pmem; return Array.isArray(t) && t.length === SPOT_LEVELS.length ? t : DEFAULT_PMEM; };
 const ptimes = () => { const t = T.room && T.room.ptimes; return Array.isArray(t) && t.length === SPOT_LEVELS.length ? t : DEFAULT_PTIMES; };   // 0 = 제한 시간 없음
 const roomPts = (r) => {
   const p = (r && r.ptsV === PTS_V && r.pts) || {};
@@ -1695,7 +1749,7 @@ function renderTeacher() {
   $("spotLevelBtns").innerHTML = SPOT_LEVELS.map((L, i) => {
     const lv = i + 1, t = ptimes()[i];
     return `<button class="level-btn ${lv === T.psel ? "active" : ""}" data-plv="${lv}" ${playing ? "disabled" : ""}>
-      <b>${L.name}</b>다른 곳 ${L.count} · 그림 ${L.keys.length}개<br><small>${t > 0 ? fmtTime(t) : "시간 제한 없음"}${pts().mult ? ` · ×${SPOT_MULT[i]}` : ""}</small></button>`;
+      <b>${L.name}</b>바뀐 곳 ${L.count} · 그림 ${L.keys.length}개<br><small>👀 ${pmems()[i]}초 → 🔍 ${t > 0 ? fmtTime(t) : "제한 없음"}${pts().mult ? ` · ×${SPOT_MULT[i]}` : ""}</small></button>`;
   }).join("");
   const ptt = ptimes()[T.psel - 1];
   $("ptimeLabel").textContent = ptt > 0 ? fmtTime(ptt) : "제한 없음";
@@ -1704,6 +1758,8 @@ function renderTeacher() {
   $("ptimeFree").classList.toggle("on", !(ptt > 0));
   $("ptimeNote").classList.toggle("hidden", ptt > 0);
   ["ptimePlus", "ptimeFree"].forEach((id) => ($(id).disabled = playing));
+  $("pmemLabel").textContent = `${pmems()[T.psel - 1]}초`;
+  ["pmemMinus", "pmemPlus"].forEach((id) => ($(id).disabled = playing));
   $("ptimeMinus").disabled = playing || !(ptt > 0);
   $("symLevelBtns").innerHTML = SYM.levels.map((L, i) => {
     const lv = i + 1, t = stimes()[i];
@@ -1770,9 +1826,9 @@ function renderTeacher() {
   $("tPuzzleCard").classList.toggle("hidden", !showPuzzle && !showCube && !showSym && !showSpot);
   $("tSpot").classList.toggle("hidden", !showSpot);
   if (showSpot) {
-    $("tRoundInfo").textContent = `${r.round}라운드 · 달라진 그림 찾기 · ${spotTitle(spotKey(r))} · ${spotBoxes(spotKey(r)).length}곳${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
+    $("tRoundInfo").textContent = `${r.round}라운드 · 달라진 그림 찾기 · ${spotTitle(spotKey(r))} · ${spotBoxes(spotKey(r)).length}곳 · 👀 ${(r.spot && r.spot.mem) || 0}초${r.status === "playing" && now() < spotMemEnd(r) ? "(외우는 중)" : ""}${r.duration > 0 ? "" : " · 시간 제한 없음"}${r.status === "ended" ? " · 끝" : ""}`;
     const k = r.round + ":" + T.answer;
-    if (T.spotKey !== k) { T.spotKey = k; tSpotGame.load(spotKey(r), [], { locked: true, showAll: T.answer }); }
+    if (T.spotKey !== k) { T.spotKey = k; tSpotGame.load(spotKey(r), [], { locked: true, showAll: T.answer }); tSpotGame.setView("both"); }
     $("answerBtn").classList.toggle("hidden", r.status !== "ended");
     $("answerBtn").textContent = T.answer ? "🙈 다른 곳 숨기기" : "✅ 다른 곳 보기";
   }
@@ -2121,8 +2177,9 @@ async function startSpot() {
   if (reset) cand = [...L.keys];
   const k = cand[Math.floor(Math.random() * cand.length)];
   await updateDoc(T.roomRef, {
-    status: "playing", game: "spot", round: (r.round || 0) + 1, level: lv, spot: { lv, k },
-    startAt: serverTimestamp(), duration: ptimes()[lv - 1], explain: deleteField(),
+    // duration = 외우는 시간 + 찾는 시간 (찾는 시간 제한이 없으면 0)
+    status: "playing", game: "spot", round: (r.round || 0) + 1, level: lv, spot: { lv, k, mem: pmems()[lv - 1] },
+    startAt: serverTimestamp(), duration: ptimes()[lv - 1] > 0 ? pmems()[lv - 1] + ptimes()[lv - 1] : 0, explain: deleteField(),
     [`used.P${lv}`]: reset ? [k] : arrayUnion(k)
   });
 }
@@ -2258,6 +2315,13 @@ function changePTime(d) {
   arr[i] = d === "free" ? (cur > 0 ? 0 : DEFAULT_PTIMES[i]) : !(cur > 0) ? DEFAULT_PTIMES[i] : Math.min(900, Math.max(20, cur + d));
   updateDoc(T.roomRef, { ptimes: arr }).catch(() => toast("시간을 바꾸지 못했어요."));
 }
+function changePMem(d) {
+  const arr = [...pmems()], i = T.psel - 1;
+  arr[i] = Math.min(120, Math.max(5, arr[i] + d));
+  updateDoc(T.roomRef, { pmem: arr }).catch(() => toast("시간을 바꾸지 못했어요."));
+}
+$("pmemMinus").addEventListener("click", () => changePMem(-5));
+$("pmemPlus").addEventListener("click", () => changePMem(5));
 $("ptimeMinus").addEventListener("click", () => changePTime(-30));
 $("ptimePlus").addEventListener("click", () => changePTime(30));
 $("ptimeFree").addEventListener("click", () => changePTime("free"));

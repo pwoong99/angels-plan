@@ -695,3 +695,11 @@ body.st-playing #spotArea .game-top { flex-wrap: nowrap; }
 .game-pick-head h3 { margin: 0; }
 .game-on-box { margin: 8px 0; padding: 10px; border: 2px dashed var(--line); border-radius: 14px; background: #fafbff; }
 .tc-btn.game-on:not(.active) { opacity: .6; }
+
+/* 달라진 그림 찾기: 외우기·찾기 때는 그림 한 장만 크게 */
+.spot-play.single .spot-view { width: min(94vw, 760px, calc((100 * var(--vh) - 330px) * 1.339)); }
+#ppBoard.single .spot-view { width: min(90vw, 900px, calc((100 * var(--vh) - 340px) * 1.339)); }
+body.st-playing #ptBoard.single .spot-view { width: min(97vw, calc((100 * var(--vh) - 165px) * 1.339)); }
+.spot-play.single[data-view="orig"] .spot-view { border-color: #f59f00; }
+.spot-play.single[data-view="orig"] .spot-tag::after { content: " · 잘 외워요!"; }
+#ptReady { white-space: nowrap; }

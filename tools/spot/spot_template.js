@@ -43,15 +43,15 @@ export function hitSpot(key, x, y, found) {
   return best;
 }
 
-// ----- 두 그림 판 -----
-// 왼쪽(위) 원본, 오른쪽(아래) 바꾼 그림. 어느 쪽을 눌러도 됨
-// 🔍 확대하면 두 그림이 함께 커지고, 끌면 함께 움직임
+// ----- 그림 판 -----
+// 게임 방법: ① 원래 그림만 보여 주며 외우는 시간(setView("orig")) → ② 원래 그림은 사라지고 바뀐 그림만(setView("chg"))에서 바뀐 곳 찾기
+// 정답 보기·선생님 화면은 두 그림을 나란히(setView("both")). 🔍 확대하면 보이는 그림이 함께 커지고, 끌면 함께 움직임
 const NS = "http://www.w3.org/2000/svg";
 export class SpotGame {
   constructor(root, opt = {}) {
     this.root = root; this.opt = opt;
     this.key = null; this.found = []; this.locked = false; this.showAll = false;
-    this.zoom = 1; this.x0 = 0; this.y0 = 0; this.waitUntil = 0;
+    this.zoom = 1; this.x0 = 0; this.y0 = 0; this.waitUntil = 0; this.view = "both";
     root.classList.add("spot-play");
     root.innerHTML = "";
     this.views = ["orig", "chg"].map((which) => {
@@ -72,6 +72,12 @@ export class SpotGame {
     this.found = [...found]; this.locked = !!o.locked; this.showAll = !!o.showAll;
     this.root.classList.toggle("locked", this.locked);
     this.place(); this.draw();
+  }
+  setView(v) {
+    this.view = v;
+    this.views.forEach((o) => o.el.classList.toggle("hidden", v !== "both" && v !== o.which));
+    this.root.classList.toggle("single", v !== "both");
+    this.root.dataset.view = v;
   }
   setLocked(b) { this.locked = !!b; this.root.classList.toggle("locked", this.locked); }
   setShowAll(b) { this.showAll = !!b; this.draw(); }
