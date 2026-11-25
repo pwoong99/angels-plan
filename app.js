@@ -6,15 +6,15 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.11";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.11";
-import * as WG from "./wallgo.js?v=v1.11";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.11";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.11";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.11";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.11";
+import { PUZZLES } from "./puzzles.js?v=v1.12";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.12";
+import * as WG from "./wallgo.js?v=v1.12";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.12";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.12";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.12";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.12";
 
-const VERSION = "v1.11";
+const VERSION = "v1.12";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -43,6 +43,8 @@ const SPOT_MULT = [0.6, 0.7, 0.8, 0.8, 0.9, 1, 1.1, 1.3, 1.5];
 // 외우는 시간(초): 원래 그림만 보여 주는 시간. ⭐ 작은 장면은 짧게, ⭐⭐⭐ 넓은 장면은 길게
 const DEFAULT_PMEM = [15, 15, 15, 25, 25, 25, 40, 40, 40];
 // 외우기가 끝나는 때(서버 시각). startAt이 아직 안 정해졌으면 외우는 중으로 봄
+// 외우기가 끝나면 SPOT_GAP초 동안 빈 화면(잔상이 남지 않게) → 그다음 바뀐 그림
+const SPOT_GAP = 2;
 const spotMemEnd = (r) => { const s = ms(r && r.startAt); return s ? s + ((r.spot && r.spot.mem) || 0) * 1000 : Infinity; };
 const spotKey = (r) => (r && r.spot && spotBoxes(r.spot.k).length ? r.spot.k : null);
 // 진행 중 찾은 곳: edges 칸에 "라운드:번호,번호,…;t누른횟수", 다 찾거나 기회를 다 쓰면 sub로 제출
@@ -410,7 +412,7 @@ const EXPLAIN = {
   ],
   spot: [
     { title: "🔍 달라진 그림 찾기란?", text: "먼저 원래 그림을 잘 보고 외워요. 시간이 지나면 원래 그림은 사라져요!\n그다음 몇 곳이 바뀐 그림이 나오면, 외운 것과 달라진 곳을 모두 찾아요.", show: () => spotShow([], "orig") + pill("① 👀 외우기", "y") },
-    { title: "👀 외우는 시간", text: "원래 그림만 보여요. 무엇이 어디에, 무슨 색으로 있는지 잘 외워요.\n다 외웠으면 [✅ 다 외웠어요]를 눌러 바로 시작해도 돼요. 시간이 끝나면 저절로 넘어가요.",
+    { title: "👀 외우는 시간", text: "원래 그림만 보여요. 무엇이 어디에, 무슨 색으로 있는지 잘 외워요.\n다 외웠으면 [✅ 다 외웠어요]를 눌러도 돼요. 외우기가 끝나면 2초 동안 빈 화면이 나온 뒤 바뀐 그림이 나와요.",
       show: () => spotShow([], "orig") + pill("시간이 끝나면 그림이 사라져요", "p") },
     { title: "🎯 누를 기회", text: "누를 수 있는 기회는 바뀐 곳 개수만큼이에요. 5곳이 바뀌었으면 5번!\n틀린 곳을 누르면 기회가 하나 줄어요. 아무 데나 누르지 말고 확실한 곳만 눌러요.",
       show: () => spotShow([0], "chg") + pill("기회 = 바뀐 곳 개수", "y") + pill("틀리면 기회 −1", "p") },
@@ -1003,10 +1005,14 @@ function spotMsg(el, text, cls, wait) {
   if (wait) PT.msgT = setTimeout(() => { if (el.textContent === text) { el.textContent = ""; el.className = "game-msg"; } }, wait);
 }
 function spotProg() { $("ptProg").textContent = `찾은 곳 ${ptGame.found.length}/${ptGame.total} · 🎯 남은 기회 ${ptGame.tapsLeft}`; }
-// 지금 단계: 외우기(mem) → 찾기(find). 다 외웠어요를 눌렀거나, 이미 찾은 곳이 있거나(새로고침), 외우는 시간이 끝나면 찾기
+// 지금 단계: 외우기(mem) → 빈 화면(gap, 2초) → 찾기(find)
+// [다 외웠어요]를 누르면 그때부터 2초 뒤 찾기. 이미 눌러 본 곳이 있거나(새로고침) 제출했으면 바로 찾기
 function spotPhase(r, me) {
-  if (PT.ready === r.round || (me && me.sub && me.sub.round === r.round) || spotTaps(me, r.round) > 0) return "find";
-  return now() >= spotMemEnd(r) ? "find" : "mem";
+  if ((me && me.sub && me.sub.round === r.round) || spotTaps(me, r.round) > 0) return "find";
+  const t = now();
+  const memEnd = PT.ready === r.round ? Math.min(PT.readyAt, spotMemEnd(r)) : spotMemEnd(r);
+  if (t < memEnd) return "mem";
+  return t < memEnd + SPOT_GAP * 1000 ? "gap" : "find";
 }
 function renderStudentSpot(r, me, res) {
   const key = spotKey(r);
@@ -1014,18 +1020,20 @@ function renderStudentSpot(r, me, res) {
   const submitted = !!(me.sub && me.sub.round === r.round);
   const end = endAtOf(r), timeUp = end !== null && now() > end;
   const phase = res || timeUp ? "find" : spotPhase(r, me);
-  const lock = submitted || timeUp || !!res || PT.sent === r.round || phase === "mem";
+  const lock = submitted || timeUp || !!res || PT.sent === r.round || phase !== "find";
   if (PT.round !== r.round) {
     PT.round = r.round; PT.sent = null; PT.phase = null; PT.lastN = spotFound(me, r.round).length;
     ptGame.load(key, spotFound(me, r.round), { locked: lock, taps: spotTaps(me, r.round) });
     $("ptLevel").textContent = `🔍 ${spotTitle(key)}`;
   } else if (ptGame.locked !== lock) ptGame.setLocked(lock);
   if (PT.phase !== phase) { PT.phase = phase; ptGame.setZoom(1); ptGame.setView(phase === "mem" ? "orig" : "chg"); }
+  $("ptBoard").classList.toggle("blank", phase === "gap");
   $("ptReady").classList.toggle("hidden", phase !== "mem");
   $("ptZoom").disabled = false;
   spotProg();
   const msg = $("ptMsg");
   if (phase === "mem") { $("ptProg").textContent = `바뀔 곳 ${ptGame.total}곳 · 🎯 기회 ${ptGame.total}번`; spotMsg(msg, "👀 원래 그림을 잘 외워요! 시간이 끝나면 사라지고 바뀐 그림이 나와요", ""); return; }
+  if (phase === "gap") { spotMsg(msg, "⏳ 잠깐! 곧 바뀐 그림이 나와요", ""); return; }
   if (PT.shownFind !== r.round && !res && !submitted && !timeUp) { PT.shownFind = r.round; spotMsg(msg, `🔍 원래 그림이 사라졌어요! 바뀐 곳을 찾아 톡 눌러요 (기회 ${ptGame.total}번)`, "", 3000); }
   if (res) {
     const t = resultText(res);
@@ -1053,7 +1061,7 @@ function spotFindSave(found, taps) {
   PT.saveT = setTimeout(() => updateDoc(ST.pRef, { edges: `${round}:${txt}` }).catch(console.warn), 300);
 }
 $("ptZoom").addEventListener("click", () => ptGame.setZoom(ptGame.zoom >= 3 ? 1 : ptGame.zoom + 1));
-$("ptReady").addEventListener("click", () => { if (ST.room) { PT.ready = ST.room.round; renderStudent(); } });
+$("ptReady").addEventListener("click", () => { if (ST.room) { PT.ready = ST.room.round; PT.readyAt = now(); renderStudent(); } });
 
 // ----- 큐브 세기 (학생) -----
 // 진행 중 답은 edges 칸에 "라운드:답,답,…"로 저장(새로고침해도 이어짐), 다 풀면 sub로 제출
@@ -1242,13 +1250,16 @@ function studentTick() {
       spotMem = true;
       const ml = spotMemEnd(r) === Infinity ? (r.spot && r.spot.mem) || 0 : (spotMemEnd(r) - now()) / 1000;
       $("ptTimer").textContent = "👀 " + fmtTime(ml); $("ptTimer").classList.remove("free"); $("ptTimer").classList.toggle("warn", ml <= 5);
+    } else if (ph === "gap") {
+      spotMem = true;
+      $("ptTimer").textContent = "⏳"; $("ptTimer").classList.remove("free", "warn");
     }
   }
   const end = endAtOf(r);
   if (end === null) {   // 제한 시간 없음: 지난 시간만 보여 줌
     for (const el of [$("stTimer"), $("cbTimer"), $("syTimer"), $("ptTimer")]) {
       if (spotMem && el.id === "ptTimer") continue;
-      const el2 = r.game === "spot" && el.id === "ptTimer" && spotMemEnd(r) !== Infinity ? Math.max(0, (now() - spotMemEnd(r)) / 1000) : elapsedOf(r);
+      const el2 = r.game === "spot" && el.id === "ptTimer" && spotMemEnd(r) !== Infinity ? Math.max(0, (now() - spotMemEnd(r)) / 1000 - SPOT_GAP) : elapsedOf(r);
       el.textContent = "⏱ " + fmtTime(el2); el.classList.remove("warn"); el.classList.add("free");
     }
     return;
@@ -2136,9 +2147,9 @@ async function startSpot() {
   if (reset) cand = [...L.keys];
   const k = cand[Math.floor(Math.random() * cand.length)];
   await updateDoc(T.roomRef, {
-    // duration = 외우는 시간 + 찾는 시간 (찾는 시간 제한이 없으면 0)
+    // duration = 외우는 시간 + 빈 화면 2초 + 찾는 시간 (찾는 시간 제한이 없으면 0)
     status: "playing", game: "spot", round: (r.round || 0) + 1, level: lv, spot: { lv, k, mem: pmems()[lv - 1] },
-    startAt: serverTimestamp(), duration: ptimes()[lv - 1] > 0 ? pmems()[lv - 1] + ptimes()[lv - 1] : 0, explain: deleteField(),
+    startAt: serverTimestamp(), duration: ptimes()[lv - 1] > 0 ? pmems()[lv - 1] + SPOT_GAP + ptimes()[lv - 1] : 0, explain: deleteField(),
     [`used.P${lv}`]: reset ? [k] : arrayUnion(k)
   });
 }
