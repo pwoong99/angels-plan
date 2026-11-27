@@ -6,15 +6,16 @@ import {
   onSnapshot, serverTimestamp, increment, arrayUnion, writeBatch, deleteField, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { PUZZLES } from "./puzzles.js?v=v1.12";
-import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.12";
-import * as WG from "./wallgo.js?v=v1.12";
-import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.12";
-import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.12";
-import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.12";
-import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.12";
+import { PUZZLES } from "./puzzles.js?v=v1.13";
+import { PRACTICE } from "./practice.js?v=v1.13";
+import { Board, checkSolution, diagnose, encodeEdges, decodeEdges, decodeAnswer } from "./board.js?v=v1.13";
+import * as WG from "./wallgo.js?v=v1.13";
+import { CUBES, cubeSVG, cubeCount, cubeTopHTML } from "./cubes.js?v=v1.13";
+import { SYM, symInfo, SymBoard, checkSym, decodeState, encodeState, initialState, answerState } from "./sym.js?v=v1.13";
+import { SPOT_LEVELS, SpotGame, spotBoxes, spotTitle, preloadSpot } from "./spot.js?v=v1.13";
+import { avatarSVG, preloadAvatar, PARTS, PART_ORDER, OPTION_LABELS, randomAvatar, cleanAvatar, shownOptions, wingInfo, WING_LEVELS, DEFAULT_WING_TH, validWingTh, setWingThresholds } from "./avatar.js?v=v1.13";
 
-const VERSION = "v1.12";
+const VERSION = "v1.13";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcHVmlC3jmTnECeB4NwKh65TdXhuNt80w",
@@ -1316,11 +1317,19 @@ $("toolSubmit").addEventListener("click", async () => {
 // =====================================================================
 // 울타리치기 혼자 연습하기 (점수 없음)
 // =====================================================================
-const PR_LEVELS = [0, 1, 2];
+// 혼자 연습: 연습 1·2와 1·2단계만, 연습 전용 문제(게임 문제와 겹치지 않음, practice.js)
+// 연습 전용 문제를 게임 문제 수의 2배만큼 못 만든 작은 단계(연습 1·2)는 게임 문제도 함께 씀
+const PRAC_N = 4;
+function pracPool(kind, i) {
+  const game = { fence: PUZZLES, sym: SYM.levels, cube: CUBES }[kind][i].puzzles, extra = PRACTICE[kind][i].puzzles;
+  return extra.length >= 2 * game.length ? extra : [...game, ...extra];
+}
+const PR_LEVELS = [0, 1, 2, 3];
 const PR_INTRO = [
   "숫자는 그 칸을 둘러싼 울타리 개수야. 3이 있는 칸부터 울타리 3개를 쳐 볼까?",
   "이번엔 숫자가 몇 개 빠졌어. 0 둘레에는 울타리를 치면 안 된다는 것도 기억해!",
-  "4×4에 도전! 끊기지 않는 하나의 울타리로 닫아야 해."
+  "4×4에 도전! 끊기지 않는 하나의 울타리로 닫아야 해.",
+  "숫자가 더 적어졌어! 0과 3 둘레부터 차근차근 생각해 봐."
 ];
 const PR_MSG = {
   empty: "먼저 점과 점 사이를 톡 눌러 울타리를 그려 봐!",
@@ -1341,11 +1350,11 @@ function prSetTool(m) {
 }
 function prLoad(lv) {
   PR.lv = lv;
-  const L = PUZZLES[lv];
+  const L = PUZZLES[lv], pool = pracPool("fence", lv);
   let i;
-  do { i = Math.floor(Math.random() * L.puzzles.length); } while (L.puzzles.length > 1 && i === PR.idx);
+  do { i = Math.floor(Math.random() * pool.length); } while (pool.length > 1 && i === PR.idx);
   PR.idx = i;
-  prBoard.load(L.w, L.h, L.puzzles[i].c);
+  prBoard.load(L.w, L.h, pool[i].c);
   prBoard.setLocked(false);
   prSetTool("draw");
   prSay(PR_INTRO[PR_LEVELS.indexOf(lv)]);
@@ -1366,7 +1375,7 @@ $("prNext").addEventListener("click", () => prLoad(PR.lv));
 // 힌트: 틀린 울타리가 있으면 하나 치우고, 없으면 맞는 울타리를 하나 쳐 줌
 $("prHint").addEventListener("click", () => {
   if (prBoard.locked) return;
-  const ans = decodeAnswer(PUZZLES[PR.lv].puzzles[PR.idx].a);
+  const ans = decodeAnswer(pracPool("fence", PR.lv)[PR.idx].a);
   const wrong = [...prBoard.edges].find((e) => !ans.has(e));
   prLastMsg = "";
   if (wrong !== undefined) { prBoard.edges.delete(wrong); prSay("틀린 울타리 하나를 치웠어! 다시 생각해 봐."); }
@@ -1448,11 +1457,11 @@ const SP = { lv: 0, i: -1, pz: null };
 const spBoard = new SymBoard($("spBoard"), { onChange: (st, res) => spChange(res) });
 function spLoad(lv, next = true) {
   SP.lv = lv;
-  const L = SYM.levels[lv];
-  if (next || SP.i < 0) { let i; do { i = Math.floor(Math.random() * L.puzzles.length); } while (L.puzzles.length > 1 && i === SP.i); SP.i = i; }
-  SP.pz = L.puzzles[SP.i];
+  const pool = pracPool("sym", lv);
+  if (next || SP.i < 0 || SP.i >= pool.length) { let i; do { i = Math.floor(Math.random() * pool.length); } while (pool.length > 1 && i === SP.i); SP.i = i; }
+  SP.pz = pool[SP.i];
   spBoard.load(SP.pz, initialState(SP.pz));
-  $("spLevels").innerHTML = SYM.levels.map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-splv="${i}">${x.tut ? "🐣 " : ""}${x.name}</button>`).join("");
+  $("spLevels").innerHTML = SYM.levels.slice(0, PRAC_N).map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-splv="${i}">${x.tut ? "🐣 " : ""}${x.name}</button>`).join("");
   $("spMsg").textContent = "조각을 끌어서 옮기고, 톡 누르면 돌아가. 선대칭 모양을 만들어 봐!";
   $("spMsg").className = "bubble";
 }
@@ -1474,11 +1483,11 @@ $("spLevels").addEventListener("click", (e) => { const b = e.target.closest("[da
 const CP = { lv: 0, key: null, input: "", done: false, streak: 0 };
 function cpLoad(lv) {
   CP.lv = lv; CP.input = ""; CP.done = false;
-  const L = CUBES[lv];
+  const L = CUBES[lv], pool = pracPool("cube", lv);
   let k;
-  do { k = L.puzzles[Math.floor(Math.random() * L.puzzles.length)]; } while (L.puzzles.length > 1 && k === CP.key);
+  do { k = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && k === CP.key);
   CP.key = k;
-  $("cpLevels").innerHTML = CUBES.map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-cplv="${i}">${x.tut ? "🐣 " : ""}${x.name}</button>`).join("");
+  $("cpLevels").innerHTML = CUBES.slice(0, PRAC_N).map((x, i) => `<button class="pr-lv ${i === lv ? "active" : ""}" data-cplv="${i}">${x.tut ? "🐣 " : ""}${x.name}</button>`).join("");
   $("cpPic").innerHTML = cubeSVG(k, L.w, L.h, { cls: "cube-svg big" });
   $("cpTop").innerHTML = "";
   $("cpMsg").textContent = "큐브가 모두 몇 개일까? 보이지 않는 아래쪽 큐브도 세어 봐!";
@@ -1524,7 +1533,7 @@ $("wpLevels").addEventListener("click", (e) => {
 });
 $("prCheck").addEventListener("click", () => {
   const L = PUZZLES[PR.lv];
-  const d = diagnose(L.w, L.h, L.puzzles[PR.idx].c, prBoard.edges);
+  const d = diagnose(L.w, L.h, pracPool("fence", PR.lv)[PR.idx].c, prBoard.edges);
   prLastMsg = "";
   prSay(PR_MSG[d.reason]);
   if (d.ok) { prBoard.setFill(true); prBoard.setLocked(true); confetti(); mascotMood($("prMascot"), "happy"); }
